@@ -60,6 +60,7 @@ NODE_ENV=production
 - 必须包含协议（http:// 或 https://）
 - 必须在客户端可访问
 - 如果使用 HTTPS，需要配置 SSL 证书
+- 如果通过反向代理使用路径前缀（例如 `/collab`），请在 URL 中加入该前缀，例如 `https://your-domain.com/collab`
 - 该变量以 `NEXT_PUBLIC_` 开头，会暴露给客户端
 
 ### PORT（服务器端）
@@ -178,14 +179,15 @@ NEXT_PUBLIC_WS_URL=http://your-domain.com:3001
 NEXT_PUBLIC_WS_URL=https://your-domain.com
 ```
 
-对应的 Nginx 配置：
+对应的 Nginx 配置（示例以 `/collab/` 为前缀）：
 
 ```nginx
-location /socket.io/ {
-    proxy_pass http://localhost:3001;
+location /collab/ {
+    proxy_pass http://localhost:3001/;
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_cache_bypass $http_upgrade;
 }
 ```
-

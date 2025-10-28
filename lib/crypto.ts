@@ -38,7 +38,7 @@ export function decryptText(encryptedText: string, key: string): string {
  * @param key 加密密钥
  * @returns 加密后的字符串
  */
-export function encryptObject(obj: any, key: string): string {
+export function encryptObject(obj: unknown, key: string): string {
   const jsonString = JSON.stringify(obj);
   return encryptText(jsonString, key);
 }
@@ -49,7 +49,7 @@ export function encryptObject(obj: any, key: string): string {
  * @param key 解密密钥
  * @returns 解密后的对象
  */
-export function decryptObject<T = any>(encryptedText: string, key: string): T {
+export function decryptObject<T = unknown>(encryptedText: string, key: string): T {
   const decrypted = decryptText(encryptedText, key);
   return JSON.parse(decrypted);
 }

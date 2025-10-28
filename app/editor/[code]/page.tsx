@@ -1,112 +1,65 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useCollaboration } from '@/lib/useCollaboration';
-import { User, Operation } from '@/types';
+import { useState, useRef, useCallback } from "react";
+import type { ChangeEvent } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useCollaboration } from "@/lib/useCollaboration";
+import { User } from "@/types";
 
 export default function EditorPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const roomCode = params.code as string;
-  const userName = searchParams.get('name') || '匿名用户';
-  const [userId] = useState(() => `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
-  
-  const [content, setContent] = useState('');
+  const userName = searchParams.get("name") || "匿名用户";
+  const [userId] = useState(
+    () => `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  );
+
+  const [content, setContent] = useState("");
   const [users, setUsers] = useState<User[]>([]);
-  const [cursorPosition, setCursorPosition] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const lastContentRef = useRef('');
-  const isRemoteChangeRef = useRef(false);
 
   // 协同编辑 Hook
-  const { isConnected, error, sendOperation, sendCursorPosition } = useCollaboration({
-    roomCode,
-    userName,
-    userId,
-    onContentChange: (newContent) => {
-      isRemoteChangeRef.current = true;
-      setContent(newContent);
-      lastContentRef.current = newContent;
-    },
-    onUsersChange: setUsers,
-  });
+  const { isConnected, error, applyLocalChange, sendCursorPosition } =
+    useCollaboration({
+      roomCode,
+      userName,
+      userId,
+      onContentChange: setContent,
+      onUsersChange: setUsers,
+    });
 
   // 处理文本变化
   const handleContentChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    (e: ChangeEvent<HTMLTextAreaElement>) => {
       const newContent = e.target.value;
-      const oldContent = lastContentRef.current;
-
-      // 如果是远程更改，跳过
-      if (isRemoteChangeRef.current) {
-        isRemoteChangeRef.current = false;
-        return;
-      }
-
-      // 计算差异并生成操作
-      const operation = calculateOperation(oldContent, newContent, cursorPosition);
-      
-      if (operation) {
-        sendOperation(operation);
-      }
-
       setContent(newContent);
-      lastContentRef.current = newContent;
+      applyLocalChange(newContent);
     },
-    [cursorPosition, sendOperation]
+    [applyLocalChange]
   );
-
-  // 计算操作
-  const calculateOperation = (
-    oldContent: string,
-    newContent: string,
-    cursor: number
-  ): Omit<Operation, 'userId' | 'timestamp'> | null => {
-    // 简单实现：检测插入或删除
-    if (newContent.length > oldContent.length) {
-      // 插入操作
-      const insertedText = newContent.substring(cursor - (newContent.length - oldContent.length), cursor);
-      return {
-        type: 'insert',
-        position: cursor - insertedText.length,
-        content: insertedText,
-      };
-    } else if (newContent.length < oldContent.length) {
-      // 删除操作
-      const deleteLength = oldContent.length - newContent.length;
-      return {
-        type: 'delete',
-        position: cursor,
-        length: deleteLength,
-      };
-    }
-    
-    return null;
-  };
 
   // 处理光标位置变化
   const handleCursorChange = useCallback(() => {
     if (textareaRef.current) {
       const position = textareaRef.current.selectionStart;
-      setCursorPosition(position);
       sendCursorPosition(position);
     }
   }, [sendCursorPosition]);
 
   // 退出房间
   const handleLeaveRoom = () => {
-    if (confirm('确定要离开这个房间吗？')) {
-      router.push('/');
+    if (confirm("确定要离开这个房间吗？")) {
+      router.push("/");
     }
   };
 
   // 复制房间代码
   const handleCopyRoomCode = () => {
     navigator.clipboard.writeText(roomCode);
-    alert('房间代码已复制到剪贴板');
+    alert("房间代码已复制到剪贴板");
   };
 
   return (
@@ -118,7 +71,9 @@ export default function EditorPage() {
             协同编辑器
           </h1>
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">房间:</span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              房间:
+            </span>
             <code className="bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded text-sm font-mono text-gray-900 dark:text-white">
               {roomCode}
             </code>
@@ -136,11 +91,11 @@ export default function EditorPage() {
           <div className="flex items-center space-x-2">
             <div
               className={`w-2 h-2 rounded-full ${
-                isConnected ? 'bg-green-500' : 'bg-red-500'
+                isConnected ? "bg-green-500" : "bg-red-500"
               }`}
             />
             <span className="text-sm text-gray-600 dark:text-gray-400">
-              {isConnected ? '已连接' : '未连接'}
+              {isConnected ? "已连接" : "未连接"}
             </span>
           </div>
 
@@ -192,7 +147,7 @@ export default function EditorPage() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             在线用户 ({users.length})
           </h2>
-          
+
           <div className="space-y-3">
             {users.map((user) => (
               <div
@@ -201,7 +156,7 @@ export default function EditorPage() {
               >
                 <div
                   className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: user.color || '#999' }}
+                  style={{ backgroundColor: user.color || "#999" }}
                 />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
@@ -243,4 +198,3 @@ export default function EditorPage() {
     </div>
   );
 }
-
