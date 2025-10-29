@@ -14,6 +14,11 @@ cd server
 npm install
 cd ..
 
+# 删除并重建环境变量文件
+echo "📝 重建环境变量文件..."
+echo "NEXT_PUBLIC_WS_URL=http://www.hengheng.online:8101" > .env.local
+echo "✅ 环境变量文件已重建"
+
 # 构建前端
 echo "🔨 构建前端应用..."
 npm run build
