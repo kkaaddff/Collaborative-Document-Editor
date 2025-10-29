@@ -23,7 +23,9 @@ require_cmd rsync
 cleanup() {
   rm -rf "$STAGING_DIR"
 }
-trap cleanup EXIT
+if [[ "${KEEP_RELEASE_STAGING:-0}" != "1" ]]; then
+  trap cleanup EXIT
+fi
 
 echo ">> Preparing staging area"
 rm -rf "$STAGING_DIR"
@@ -46,23 +48,27 @@ npm ci
 echo ">> Running lint checks"
 npm run lint
 
-echo ">> Building Next.js application"
+echo ">> Building static Next.js application"
 NEXT_TELEMETRY_DISABLED=1 npm run build -- --webpack
 
-echo ">> Pruning frontend dev dependencies"
-npm prune --omit=dev
+if [[ ! -d "out" ]]; then
+  echo "Error: expected static export directory 'out' was not generated." >&2
+  exit 1
+fi
 
 echo ">> Assembling frontend artifact"
-mkdir -p "$ARTIFACT_ROOT/frontend/.next" "$ARTIFACT_ROOT/frontend/public"
-rsync -a --exclude "cache" ".next/" "$ARTIFACT_ROOT/frontend/.next/"
-rsync -a "public/" "$ARTIFACT_ROOT/frontend/public/"
-rsync -a "node_modules/" "$ARTIFACT_ROOT/frontend/node_modules/"
-
-for file in package.json package-lock.json next.config.ts postcss.config.mjs tailwind.config.js tsconfig.json next-env.d.ts health-check.js; do
-  if [[ -e "$file" ]]; then
-    rsync -a "$file" "$ARTIFACT_ROOT/frontend/"
-  fi
-done
+mkdir -p "$ARTIFACT_ROOT/frontend"
+rsync -a "out/" "$ARTIFACT_ROOT/frontend/"
+rm -rf \
+  "$ARTIFACT_ROOT/frontend/node_modules" \
+  "$ARTIFACT_ROOT/frontend/.next"
+rm -f \
+  "$ARTIFACT_ROOT/frontend/package.json" \
+  "$ARTIFACT_ROOT/frontend/package-lock.json" \
+  "$ARTIFACT_ROOT/frontend/next.config.ts" \
+  "$ARTIFACT_ROOT/frontend/next-env.d.ts" \
+  "$ARTIFACT_ROOT/frontend/postcss.config.mjs" \
+  "$ARTIFACT_ROOT/frontend/tsconfig.json"
 popd >/dev/null
 
 echo ">> Installing server dependencies"
@@ -86,6 +92,7 @@ ARCHIVE_PATH="${ARCHIVE_DIR}/${ARCHIVE_BASENAME}.zip"
 
 echo ">> Creating archive at ${ARCHIVE_PATH}"
 pushd "$STAGING_DIR" >/dev/null
+rm -f "$ARCHIVE_PATH"
 zip -rq "$ARCHIVE_PATH" "$(basename "$ARTIFACT_ROOT")"
 popd >/dev/null
 

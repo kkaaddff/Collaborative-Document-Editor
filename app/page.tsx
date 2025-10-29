@@ -22,7 +22,9 @@ export default function Home() {
   const handleCreateNew = () => {
     const newCode = generateRoomCode();
     const defaultName = `用户${Math.floor(Math.random() * 1000)}`;
-    router.push(`/editor/${newCode}?name=${encodeURIComponent(defaultName)}`);
+    router.push(
+      `/editor?code=${newCode}&name=${encodeURIComponent(defaultName)}`
+    );
   };
 
   // 加入已有文档
@@ -40,7 +42,7 @@ export default function Home() {
     }
 
     router.push(
-      `/editor/${roomCode.trim().toUpperCase()}?name=${encodeURIComponent(
+      `/editor?code=${roomCode.trim().toUpperCase()}&name=${encodeURIComponent(
         userName.trim()
       )}`
     );

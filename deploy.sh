@@ -4,14 +4,10 @@
 
 echo "🚀 开始部署协同编辑器..."
 
-# 安装前端依赖
-echo "📦 安装前端依赖..."
-npm install
-
-# 安装服务器依赖
-echo "📦 安装服务器依赖..."
+# 安装协作服务依赖
+echo "📦 安装协作服务依赖..."
 cd server
-npm install
+npm install --omit=dev
 cd ..
 
 # 删除并重建环境变量文件
@@ -19,16 +15,13 @@ echo "📝 重建环境变量文件..."
 echo "NEXT_PUBLIC_WS_URL=http://www.hengheng.online:8101" > .env.local
 echo "✅ 环境变量文件已重建"
 
-# 构建前端
-echo "🔨 构建前端应用..."
-npm run build
+echo "🌐 前端静态资源位于 ./frontend"
+echo "   可直接部署到任意静态站点服务（如 Nginx、OSS、CDN）。"
 
 echo "✅ 部署准备完成！"
 echo ""
 echo "启动命令："
-echo "  开发环境: npm run dev:all"
-echo "  生产环境: pm2 start server/index.js --name ws-server && pm2 start npm --name next-app -- start"
+echo "  协作服务: pm2 start server/index.js --name ws-server"
 echo ""
-echo "访问地址: http://www.hengheng.online:8100"
+echo "建议将 ./frontend 内容部署至 http://www.hengheng.online:8100"
 echo "WebSocket 服务器: http://www.hengheng.online:8101"
-

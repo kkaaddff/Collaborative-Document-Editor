@@ -91,6 +91,10 @@ export function useCollaboration({
   const contentRef = useRef<string>("");
 
   useEffect(() => {
+    if (!roomCode) {
+      return;
+    }
+
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
     const doc = new Y.Doc();
     const provider = new WebsocketProvider(wsUrl, roomCode, doc, {

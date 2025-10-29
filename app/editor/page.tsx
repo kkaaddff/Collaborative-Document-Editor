@@ -1,27 +1,41 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import {
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { ChangeEvent } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCollaboration } from "@/lib/useCollaboration";
 import { User } from "@/types";
 
-export default function EditorPage() {
-  const params = useParams();
+function EditorPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const roomCode = params.code as string;
+  const roomCode = useMemo(
+    () => searchParams.get("code")?.toUpperCase() ?? "",
+    [searchParams]
+  );
   const userName = searchParams.get("name") || "匿名用户";
   const [userId] = useState(
     () => `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
 
+  useEffect(() => {
+    if (!roomCode) {
+      router.replace("/");
+    }
+  }, [roomCode, router]);
+
   const [content, setContent] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // 协同编辑 Hook
   const { isConnected, error, applyLocalChange, sendCursorPosition } =
     useCollaboration({
       roomCode,
@@ -31,7 +45,6 @@ export default function EditorPage() {
       onUsersChange: setUsers,
     });
 
-  // 处理文本变化
   const handleContentChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
       const newContent = e.target.value;
@@ -41,7 +54,6 @@ export default function EditorPage() {
     [applyLocalChange]
   );
 
-  // 处理光标位置变化
   const handleCursorChange = useCallback(() => {
     if (textareaRef.current) {
       const position = textareaRef.current.selectionStart;
@@ -49,22 +61,24 @@ export default function EditorPage() {
     }
   }, [sendCursorPosition]);
 
-  // 退出房间
   const handleLeaveRoom = () => {
-    if (confirm("确定要离开这个房间吗？")) {
-      router.push("/");
-    }
+    router.push("/");
   };
 
-  // 复制房间代码
   const handleCopyRoomCode = () => {
+    if (!roomCode) {
+      return;
+    }
     navigator.clipboard.writeText(roomCode);
     alert("房间代码已复制到剪贴板");
   };
 
+  if (!roomCode) {
+    return null;
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      {/* 顶部工具栏 */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -87,7 +101,6 @@ export default function EditorPage() {
         </div>
 
         <div className="flex items-center space-x-4">
-          {/* 连接状态 */}
           <div className="flex items-center space-x-2">
             <div
               className={`w-2 h-2 rounded-full ${
@@ -108,16 +121,13 @@ export default function EditorPage() {
         </div>
       </div>
 
-      {/* 错误提示 */}
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 px-6 py-4">
           <p className="text-red-700 dark:text-red-400">{error}</p>
         </div>
       )}
 
-      {/* 主要内容区域 */}
       <div className="flex-1 flex overflow-hidden">
-        {/* 编辑器 */}
         <div className="flex-1 flex flex-col p-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg flex-1 overflow-hidden flex flex-col">
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
@@ -142,7 +152,6 @@ export default function EditorPage() {
           </div>
         </div>
 
-        {/* 右侧用户列表 */}
         <div className="w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-6 overflow-y-auto">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             在线用户 ({users.length})
@@ -158,43 +167,27 @@ export default function EditorPage() {
                   className="w-3 h-3 rounded-full flex-shrink-0"
                   style={{ backgroundColor: user.color || "#999" }}
                 />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-white">
                     {user.name}
-                    {user.id === userId && (
-                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                        (你)
-                      </span>
-                    )}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    光标位置: {user.cursorPosition}
+                    光标位置: {user.cursorPosition ?? 0}
                   </p>
                 </div>
               </div>
             ))}
-
-            {users.length === 0 && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                <p className="text-sm">等待其他用户加入...</p>
-              </div>
-            )}
-          </div>
-
-          {/* 使用说明 */}
-          <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">
-              使用提示
-            </h3>
-            <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1">
-              <li>• 分享房间代码给其他人</li>
-              <li>• 所有编辑实时同步</li>
-              <li>• 支持多人同时编辑</li>
-              <li>• 数据经过加密传输</li>
-            </ul>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function EditorPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center">加载中...</div>}>
+      <EditorPageContent />
+    </Suspense>
   );
 }
