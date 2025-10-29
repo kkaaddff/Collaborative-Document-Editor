@@ -61,7 +61,7 @@ cd ..
 创建 `.env.local` 文件：
 
 ```bash
-NEXT_PUBLIC_WS_URL=http://localhost:3001
+PORT=http://localhost:3001
 ```
 
 ### 3. 启动服务
@@ -191,7 +191,7 @@ npm run build
 3. **配置环境变量**：
 ```bash
 # .env.local
-NEXT_PUBLIC_WS_URL=http://your-server-ip:3001
+PORT=http://your-server-ip:3001
 
 # server/.env (可选)
 PORT=3001

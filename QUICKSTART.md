@@ -14,21 +14,6 @@ npm install
 cd ..
 ```
 
-### 2. 配置环境变量
-
-创建 `.env.local` 文件（开发环境）：
-
-```bash
-echo "NEXT_PUBLIC_WS_URL=http://localhost:3001" > .env.local
-```
-
-生产环境需要修改为实际的服务器地址：
-
-```bash
-# 例如
-NEXT_PUBLIC_WS_URL=http://your-server-ip:3001
-```
-
 ### 3. 启动服务
 
 #### 开发环境
@@ -122,7 +107,7 @@ pm2 startup
 
 **解决方案**:
 1. 确认 WebSocket 服务器已启动
-2. 检查 `.env.local` 中的 `NEXT_PUBLIC_WS_URL` 配置
+2. 检查 `.env.local` 中的 `PORT` 配置
 3. 查看浏览器控制台的错误信息
 4. 确认端口 3001 没有被占用
 
@@ -171,7 +156,7 @@ PORT=3002 npm run dev
 PORT=3003 npm run server
 ```
 
-记得同步更新 `.env.local` 中的 `NEXT_PUBLIC_WS_URL`
+记得同步更新 `.env.local` 中的 `PORT`
 
 ## 常用命令
 

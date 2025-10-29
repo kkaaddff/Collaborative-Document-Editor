@@ -42,16 +42,6 @@ cd ..
 echo "✓ 服务器依赖安装完成"
 echo ""
 
-# 创建环境变量文件
-if [ ! -f .env.local ]; then
-    echo "📝 创建环境变量文件..."
-    echo "NEXT_PUBLIC_WS_URL=http://localhost:3001" > .env.local
-    echo "✓ .env.local 已创建"
-else
-    echo "✓ .env.local 已存在"
-fi
-echo ""
-
 # 创建日志目录
 if [ ! -d logs ]; then
     mkdir -p logs

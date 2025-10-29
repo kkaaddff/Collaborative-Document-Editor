@@ -28,6 +28,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 8100,
+        NEXT_PUBLIC_WS_URL: 'http://www.hengheng.online:8101',
       },
       error_file: './logs/web-error.log',
       out_file: './logs/web-out.log',

@@ -7,7 +7,7 @@
 
 const http = require('http');
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+const WS_URL = process.env.PORT || 'http://localhost:3001';
 const url = new URL('/health', WS_URL);
 
 console.log(`🔍 检查服务器健康状态: ${url.href}\n`);
