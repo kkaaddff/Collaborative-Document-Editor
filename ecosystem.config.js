@@ -10,7 +10,7 @@ module.exports = {
       max_memory_restart: '500M',
       env: {
         NODE_ENV: 'production',
-        PORT: 3001,
+        PORT: 8101,
       },
       error_file: './logs/ws-error.log',
       out_file: './logs/ws-out.log',
@@ -27,7 +27,7 @@ module.exports = {
       max_memory_restart: '500M',
       env: {
         NODE_ENV: 'production',
-        PORT: 3000,
+        PORT: 8100,
       },
       error_file: './logs/web-error.log',
       out_file: './logs/web-out.log',
