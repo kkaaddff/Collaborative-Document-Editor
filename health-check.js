@@ -5,6 +5,7 @@
  * 检查 WebSocket 服务器是否正常运行
  */
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const http = require('http');
 
 const WS_URL = process.env.PORT || 'http://localhost:3001';
@@ -53,4 +54,3 @@ http.get(url, (res) => {
   console.error('  3. .env.local 配置正确');
   process.exit(1);
 });
-
