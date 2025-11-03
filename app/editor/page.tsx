@@ -8,8 +8,35 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ChangeEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import type { MDXEditorMethods } from "@mdxeditor/editor";
+import { MDXEditor } from "@mdxeditor/editor";
+import {
+  headingsPlugin,
+  listsPlugin,
+  linkPlugin,
+  linkDialogPlugin,
+  quotePlugin,
+  tablePlugin,
+  codeBlockPlugin,
+  markdownShortcutPlugin,
+  toolbarPlugin,
+  thematicBreakPlugin,
+  frontmatterPlugin,
+  imagePlugin,
+  UndoRedo,
+  BoldItalicUnderlineToggles,
+  InsertTable,
+  InsertImage,
+  InsertCodeBlock,
+  InsertFrontmatter,
+  InsertThematicBreak,
+  CodeToggle,
+  CreateLink,
+  ListsToggle,
+  BlockTypeSelect,
+} from "@mdxeditor/editor";
+import "@mdxeditor/editor/style.css";
 import { useCollaboration } from "@/lib/useCollaboration";
 import { User } from "@/types";
 
@@ -26,6 +53,18 @@ function EditorPageContent() {
     () => `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
 
+  // 确保只在客户端渲染，避免 hydration mismatch
+  // MDXEditor 根据操作系统检测快捷键（Ctrl vs ⌘），
+  // 在服务器端和客户端可能不一致，导致 hydration mismatch
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // 必须在客户端挂载后才渲染编辑器
+    // 注意：这在 useEffect 中设置状态是必要的，用于避免 hydration mismatch
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!roomCode) {
       router.replace("/");
@@ -34,32 +73,73 @@ function EditorPageContent() {
 
   const [content, setContent] = useState("");
   const [users, setUsers] = useState<User[]>([]);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<MDXEditorMethods | null>(null);
+  const isUpdatingFromRemote = useRef(false);
+  const contentRef = useRef<string>("");
 
-  const { isConnected, error, applyLocalChange, sendCursorPosition } =
-    useCollaboration({
-      roomCode,
-      userName,
-      userId,
-      onContentChange: setContent,
-      onUsersChange: setUsers,
-    });
+  const { isConnected, error, applyLocalChange } = useCollaboration({
+    roomCode,
+    userName,
+    userId,
+    onContentChange: (newContent) => {
+      // 避免循环更新
+      if (isUpdatingFromRemote.current) {
+        return;
+      }
+      if (newContent !== contentRef.current) {
+        isUpdatingFromRemote.current = true;
+        contentRef.current = newContent as string;
+        setContent(newContent);
+        // 同步到 MDXEditor
+        if (editorRef.current) {
+          editorRef.current.setMarkdown(newContent as string);
+        }
+        // 使用 setTimeout 确保状态更新完成
+        setTimeout(() => {
+          isUpdatingFromRemote.current = false;
+        }, 0);
+      }
+    },
+    onUsersChange: setUsers,
+  });
 
   const handleContentChange = useCallback(
-    (e: ChangeEvent<HTMLTextAreaElement>) => {
-      const newContent = e.target.value;
-      setContent(newContent);
-      applyLocalChange(newContent);
+    (markdown: string, initialMarkdownNormalize: boolean) => {
+      if (!initialMarkdownNormalize && !isUpdatingFromRemote.current) {
+        contentRef.current = markdown;
+        setContent(markdown);
+        applyLocalChange(markdown);
+      }
     },
     [applyLocalChange]
   );
 
-  const handleCursorChange = useCallback(() => {
-    if (textareaRef.current) {
-      const position = textareaRef.current.selectionStart;
-      sendCursorPosition(position);
+  const handleImageUpload = useCallback(async (file: File) => {
+    const formData = new FormData();
+    formData.append("image", file);
+
+    try {
+      const response = await fetch("http://localhost:3001/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "上传失败");
+      }
+
+      const data = await response.json();
+      // 返回完整的 URL
+      return `http://localhost:3001${data.url}`;
+    } catch (error) {
+      console.error("图片上传失败:", error);
+      alert(
+        `图片上传失败: ${error instanceof Error ? error.message : "未知错误"}`
+      );
+      throw error;
     }
-  }, [sendCursorPosition]);
+  }, []);
 
   const handleLeaveRoom = () => {
     router.push("/");
@@ -138,17 +218,58 @@ function EditorPageContent() {
                 {content.length} 字符
               </span>
             </div>
-            <textarea
-              ref={textareaRef}
-              value={content}
-              onChange={handleContentChange}
-              onSelect={handleCursorChange}
-              onClick={handleCursorChange}
-              onKeyUp={handleCursorChange}
-              placeholder="开始输入内容..."
-              className="flex-1 w-full p-4 resize-none focus:outline-none font-mono text-base text-gray-900 dark:text-gray-100 dark:bg-gray-800 bg-white"
-              spellCheck={false}
-            />
+            <div className="flex-1 overflow-auto">
+              {mounted ? (
+                <MDXEditor
+                  ref={editorRef}
+                  markdown={content}
+                  onChange={handleContentChange}
+                  plugins={[
+                    headingsPlugin(),
+                    listsPlugin(),
+                    linkPlugin(),
+                    linkDialogPlugin(),
+                    quotePlugin(),
+                    tablePlugin(),
+                    codeBlockPlugin(),
+                    // codeMirrorPlugin({
+                    //   codeBlockTheme: "dark",
+                    //   codeBlockLanguageMap: {},
+                    // }),
+                    thematicBreakPlugin(),
+                    frontmatterPlugin(),
+                    imagePlugin({
+                      imageUploadHandler: handleImageUpload,
+                    }),
+                    markdownShortcutPlugin(),
+                    toolbarPlugin({
+                      toolbarContents: () => (
+                        <>
+                          <UndoRedo />
+                          <BoldItalicUnderlineToggles />
+                          <BlockTypeSelect />
+                          <InsertTable />
+                          <InsertImage />
+                          <InsertCodeBlock />
+                          <InsertFrontmatter />
+                          <InsertThematicBreak />
+                          <CodeToggle />
+                          <CreateLink />
+                          <ListsToggle />
+                        </>
+                      ),
+                    }),
+                  ]}
+                  contentEditableClassName="focus:outline-none min-h-[400px] p-4 text-gray-900 dark:text-gray-100"
+                  className="h-full dark:[&_.mdx-editor-toolbar]:bg-gray-800 [&_.mdx-editor-toolbar]:bg-white"
+                  spellCheck={true}
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-gray-500">加载编辑器...</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
