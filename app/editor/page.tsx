@@ -117,9 +117,9 @@ function EditorPageContent() {
   const handleImageUpload = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append("image", file);
-
+    const baseUrl = process.env.BASE_URL || "http://localhost:3001";
     try {
-      const response = await fetch("http://localhost:3001/upload", {
+      const response = await fetch(`${baseUrl}/upload`, {
         method: "POST",
         body: formData,
       });
@@ -131,7 +131,7 @@ function EditorPageContent() {
 
       const data = await response.json();
       // 返回完整的 URL
-      return `http://localhost:3001${data.url}`;
+      return `${baseUrl}${data.url}`;
     } catch (error) {
       console.error("图片上传失败:", error);
       alert(

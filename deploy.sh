@@ -12,7 +12,7 @@ cd ..
 
 # 删除并重建环境变量文件
 echo "📝 重建环境变量文件..."
-echo "NEXT_PUBLIC_WS_URL=http://www.hengheng.online:8101" > .env.local
+echo "BASE_URL=http://www.hengheng.online:8101" > .env.local
 echo "✅ 环境变量文件已重建"
 
 echo "🌐 前端静态资源位于 ./frontend"

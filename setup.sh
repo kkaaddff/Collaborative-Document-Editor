@@ -44,7 +44,7 @@ echo ""
 
 # 删除并重建环境变量文件
 echo "📝 重建环境变量文件..."
-echo "NEXT_PUBLIC_WS_URL=http://localhost:3001" > .env.local
+echo "BASE_URL=http://localhost:3001" > .env.local
 echo "✅ 环境变量文件已重建"
 
 # 创建日志目录
