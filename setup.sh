@@ -44,8 +44,8 @@ echo ""
 
 # 删除并重建环境变量文件
 echo "📝 重建环境变量文件..."
-echo "BASE_URL=http://localhost:3001" > .env.local
-echo "✅ 环境变量文件已重建"
+echo "NEXT_PUBLIC_WS_URL=http://localhost:3001" > .env.local
+echo "✅ 环境变量文件已重建 (.env.local: NEXT_PUBLIC_WS_URL)"
 
 # 创建日志目录
 if [ ! -d logs ]; then
@@ -71,9 +71,8 @@ echo ""
 echo "  健康检查:"
 echo "    npm run health"
 echo ""
-echo "  生产部署:"
-echo "    npm run build    # 构建前端"
-echo "    npm run pm2:start # 使用 PM2 启动"
+echo "  生产部署 (本地构建 → 上传 → 重启远端 nginx+pm2):"
+echo "    npm run deploy   # 详见 deploy/ 与 README「部署」章节"
 echo ""
 echo "📚 文档:"
 echo "  - README.md          完整文档"

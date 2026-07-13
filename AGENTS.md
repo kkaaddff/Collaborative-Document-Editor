@@ -7,13 +7,14 @@ This document collects the guardrails for anyone running autonomous or semi-auto
 ### Project Structure & Module Organization
 - The Next.js client lives under `app/`. `app/editor/` powers the collaborative editor, `layout.tsx` supplies the shell, and `globals.css` configures Tailwind defaults.
 - Shared utilities and client-side collaboration hooks sit in `lib/`, while reusable TypeScript definitions belong in `types/`.
-- Real-time state is managed by the standalone Node service in `server/`, which exposes Socket.IO handlers (`roomManager.js`, `otAlgorithm.js`) and crypto helpers.
-- Static assets stay in `public/`, and operational scripts (`deploy.sh`, `setup.sh`, `ecosystem.config.js`) support PM2 deployments.
+- Real-time state is managed by the standalone Node service in `server/index.js` (express + `ws` + `y-websocket` server + multer for image uploads). Collaboration is CRDT-based (Yjs) relayed over y-websocket — there is no Socket.IO or OT layer.
+- Static assets stay in `public/`; client utilities live in `lib/` (`useCollaboration.ts` for the Yjs provider, `crypto.ts` for AES).
+- Deployment is internalized under `deploy/` (`config.sh`, `deploy.sh`, `remote-restart.sh`, `nginx/coordination.conf`) driven by `npm run deploy`; `setup.sh` bootstraps local dev, `ecosystem.config.js` configures PM2.
 
 ### Build, Test, and Development Commands
 - Install dependencies with `npm install` in both the repository root and `server/`.
 - Launch the UI via `npm run dev`, start the collaboration service with `npm run server`, or run both together through `npm run dev:all`.
-- Produce production bundles with `npm run build` and serve them through `npm run start`.
+- Production is a static export (`output: "export"` → `out/`). Build locally and ship via `npm run deploy` (build → rsync → remote nginx + pm2 restart). There is no long-running Next.js server in production.
 - `npm run lint` enforces the root ESLint rules, while `npm run health` runs the health check against the PM2 ecosystem.
 - Use the PM2 helpers (`npm run pm2:start`, `pm2:stop`, `pm2:restart`, `pm2:logs`) when operating in managed environments.
 
@@ -21,13 +22,13 @@ This document collects the guardrails for anyone running autonomous or semi-auto
 - Code in TypeScript and modern React. Respect the linting profile defined in `eslint.config.mjs` and keep indentation at two spaces.
 - Use PascalCase for components and route groups, camelCase for hooks (`useCollaboration.ts`) and utilities, and UPPER_SNAKE_CASE only for environment variables.
 - Keep Tailwind utility classes inline in JSX and reserve `globals.css` for design tokens.
-- Avoid mutating shared buffers directly—delegate to helpers in `lib/crypto.ts` and the collaboration hooks to preserve operational transform integrity.
+- Avoid mutating shared Yjs documents directly—go through the provider/hook in `lib/useCollaboration.ts` so CRDT updates are applied and broadcast correctly; use `lib/crypto.ts` for any client-side AES.
 
 ### Testing Guidelines
 - Automated tests are not yet configured; add coverage alongside new features.
 - Place unit tests adjacent to source in `__tests__/` folders and document the runner you used in the PR.
-- For collaboration flows, script manual or automated multi-client scenarios against the Socket.IO server and capture the commands (`npm run server`, browser tabs, latency checks).
-- Every change touching `lib/crypto.ts` or transformation logic must include verification that concurrent edits converge without data loss.
+- For collaboration flows, script manual or automated multi-client scenarios against the y-websocket server (`npm run server`, two editor tabs with the same room code) and capture convergence checks.
+- Every change touching `lib/useCollaboration.ts` or the Yjs document model must include verification that concurrent edits converge without data loss.
 
 ### Commit & Pull Request Guidelines
 - Write small, imperative commits (e.g., `Add socket timeout guard`) that focus on a single change set.

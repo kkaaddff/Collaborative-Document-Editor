@@ -1,336 +1,170 @@
 # 协同文档编辑器
 
-一个基于 Next.js 和 WebSocket 的实时协同文档编辑器，支持多用户同时编辑文档，具有 AES 加密、操作变换算法等特性。
+基于 Next.js 16 + Yjs 的实时协同富文本编辑器。多用户可同时编辑同一文档，变更实时同步；支持图片上传、房间码加入、在线用户与光标感知。
 
 ## ✨ 功能特性
 
-- ✅ **实时协同编辑**: 多用户可以同时编辑同一文档，实时同步更改
-- ✅ **加密传输**: 使用 AES 对称加密保护传输数据
-- ✅ **冲突解决**: 实现操作变换（OT）算法处理并发编辑冲突
-- ✅ **房间系统**: 通过代码创建或加入文档房间
-- ✅ **用户状态**: 显示在线用户和实时光标位置
-- ✅ **简洁界面**: 使用 textarea 实现简化的编辑器，专注协同功能
+- ✅ **实时协同编辑**：基于 Yjs CRDT，多人并发编辑自动收敛、无冲突
+- ✅ **富文本编辑**：MDX 编辑器，支持加粗/斜体/下划线、列表、引用、表格、代码块、图片、链接等
+- ✅ **房间系统**：首页生成 8 位房间码，或凭码 + 用户名加入
+- ✅ **用户感知**：在线用户列表、实时光标位置
+- ✅ **图片上传**：服务端 multer 接收，5MB 内、仅限常见图片格式
+- ✅ **客户端加密工具**：`lib/crypto.ts` 提供 AES 加解密（crypto-js）
 
 ## 🛠 技术栈
 
-- **前端**: Next.js 16 + React 19 + TypeScript + Tailwind CSS
-- **实时通信**: Socket.IO (WebSocket)
-- **加密**: crypto-js (AES 对称加密)
-- **冲突解决**: 自定义操作变换（OT）算法
+| 层 | 技术 |
+|---|---|
+| 前端 | Next.js 16（静态导出）· React 19 · TypeScript · Tailwind CSS v4 |
+| 编辑器 | `@mdxeditor/editor` |
+| 协同内核 | Yjs（CRDT）· `y-websocket`（客户端 provider） |
+| 加密 | crypto-js（AES，客户端） |
+| 服务端 | Node · express · ws · `y-websocket` 服务端 · multer（图片上传） |
+| 进程管理 | PM2 |
+| 静态托管 / 反向代理 | OpenResty（nginx） |
 
 ## 📦 项目结构
 
 ```
-coordination-v2/
-├── app/                      # Next.js 应用目录
+coordination—v2/
+├── app/                      # Next.js App Router
 │   ├── page.tsx             # 首页（创建/加入房间）
-│   ├── layout.tsx           # 根布局
-│   ├── globals.css          # 全局样式
-│   └── editor/[code]/       # 编辑器页面
-│       └── page.tsx
-├── server/                   # WebSocket 服务器
-│   ├── index.js             # 主服务器文件
-│   ├── roomManager.js       # 房间管理
-│   ├── otAlgorithm.js       # 操作变换算法
-│   ├── crypto.js            # 服务端加密工具
-│   └── package.json         # 服务器依赖
-├── lib/                      # 工具库
-│   ├── crypto.ts            # 客户端加密工具
-│   └── useCollaboration.ts  # 协同编辑 Hook
-├── types/                    # TypeScript 类型定义
-│   └── index.ts
-└── package.json             # 前端依赖
+│   ├── editor/page.tsx      # 编辑器页（query 参数 ?code=&name=）
+│   ├── layout.tsx           # 根布局（强制浅色主题）
+│   └── globals.css          # Tailwind v4 入口 + 主题变量
+├── lib/
+│   ├── useCollaboration.ts  # Yjs + y-websocket 协同 Hook
+│   └── crypto.ts            # AES 加解密工具
+├── types/                    # TypeScript 类型
+├── server/                   # 协同 WebSocket 服务（独立 Node 进程）
+│   ├── index.js             # express + ws + y-websocket + multer
+│   ├── uploads/             # 运行时：用户上传的图片（部署时保留）
+│   └── package.json
+├── deploy/                   # 部署体系（配置内化）
+│   ├── config.sh            # 部署配置 —— 唯一真源
+│   ├── deploy.sh            # 本地入口：构建→上传→远端重启
+│   ├── remote-restart.sh    # 远端：npm ci + pm2 + nginx reload + 健康检查
+│   └── nginx/coordination.conf  # nginx 站点配置（含 try_files 修复）
+├── ecosystem.config.js       # PM2 配置
+├── health-check.js           # 健康检查脚本（dev）
+└── package.json
 ```
 
-## 🚀 快速开始
-
-### 1. 安装依赖
+## 🚀 快速开始（本地开发）
 
 ```bash
-# 安装前端依赖
-npm install
-
-# 安装服务器依赖
-cd server
-npm install
-cd ..
+npm install            # 前端依赖
+cd server && npm install && cd ..   # 服务端依赖
+cp .env.example .env.local          # 默认指向 localhost:3001
+npm run dev:all        # 同时启动前端(3000) + WS 服务(3001)
 ```
 
-### 2. 配置环境变量
+打开 [http://localhost:3000](http://localhost:3000)。也可分别 `npm run dev` 与 `npm run server`。
 
-创建 `.env.local` 文件：
+环境变量（`.env.local`）：
+
+```
+NEXT_PUBLIC_WS_URL=http://localhost:3001
+```
+
+> 该变量在 `next build` 时内联进静态产物，生产值由部署脚本写入（见下）。
+
+## 🚢 部署
+
+### 拓扑
+
+```
+浏览器  ──www.hengheng.online──▶  反向代理 (139.224.29.117, 1Panel OpenResty)
+                                   │  :8100 → 静态前端
+                                   │  :8101 → WebSocket  (含 /health /upload /uploads)
+                                   ▼
+                          应用服务器 (112.124.21.6)
+                                   │  :8100  OpenResty 容器托管静态文件
+                                   │         (root /www/sites/coordination/index)
+                                   │  :8101  PM2 coordination-ws (server/index.js)
+```
+
+- 反向代理仅做端口转发，**部署不涉及它**（1Panel 管理）。
+- 所有部署参数集中在 `deploy/config.sh`（SSH、路径、WS 地址、端口、PM2 名）。
+- nginx 站点配置真源在 `deploy/nginx/coordination.conf`，每次部署覆盖到服务器并 reload。
+
+### 一键部署
 
 ```bash
-PORT=http://localhost:3001
+npm run deploy         # = bash deploy/deploy.sh
 ```
 
-### 3. 启动服务
+脚本完成：
 
-#### 方式一：同时启动（推荐）
+1. 写入 `.env.production.local`（`NEXT_PUBLIC_WS_URL`，取自 `deploy/config.sh`）。
+2. `npm ci` + `npm run build` → 产出 `out/`（依赖经项目 `.npmrc` 走淘宝源）。
+3. `tar | ssh` 上传 `out/` → 服务器静态目录（先清空旧产物；`--no-same-owner`）。
+4. `tar | ssh` 上传 `server/`（**排除 `node_modules` 与 `uploads`**，保留运行时图片与远端依赖）。
+5. `scp` 上传 `ecosystem.config.js` + `.npmrc` + `deploy/` 脚本 + nginx 配置。
+6. ssh 远端执行 `remote-restart.sh`：
+   - `server/ npm ci --omit=dev`（服务器读项目 `.npmrc`，走淘宝源）
+   - `pm2 startOrReload ecosystem.config.js`
+   - 备份后覆盖 nginx 配置 → `openresty -t` 通过才 reload（失败自动回滚）
+   - curl 前端 + `/health` 健康检查
+
+> 上传只用 `tar/scp/ssh`，**不依赖服务器装 rsync**。本地需 `node(≥18) / npm / tar / scp / ssh`。
+> `package-lock.json`（根与 `server/`）的 `resolved` URL 已统一指向 `registry.npmmirror.com`，故 `npm ci` 在任意机器都能直连淘宝镜像。
+
+### 一次性前置（新服务器）
+
+应用服务器上需先就位（仅首次，之后由 `npm run deploy` 维护）：
+
+1. 1Panel 建一个静态站点，端口 8100，index 指向 `/opt/1panel/apps/openresty/openresty/www/sites/coordination/index`；反向代理 8100/8101 转发到本机。
+2. 安装 `node@18`、`pm2`（`npm i -g pm2`）。
+3. PM2 自启：`pm2 startup && pm2 save`（可选）。
+4. 创建项目目录 `/home/coordinationv2/coordination—v2`（首次 deploy 会 tar 进去）。
+
+### 手动运维
 
 ```bash
-npm run dev:all
+# 服务器上
+pm2 list / pm2 logs coordination-ws / pm2 restart coordination-ws
+docker exec <openresty容器> openresty -s reload      # 改 nginx 后
+curl http://www.hengheng.online:8101/health
 ```
 
-#### 方式二：分别启动
+### 离线打包（备选）
 
-**终端 1 - 启动 WebSocket 服务器：**
-```bash
-npm run server
-```
-
-**终端 2 - 启动 Next.js 开发服务器：**
-```bash
-npm run dev
-```
-
-### 4. 访问应用
-
-打开浏览器访问 [http://localhost:3000](http://localhost:3000)
-
-## 🚢 发布构建与部署
-
-### 生成发布包
-
-1. 在仓库根目录执行 `bash build-release.sh`（可在命令后追加自定义名称，例如 `bash build-release.sh coordination-v2-prd`）。
-2. 脚本会使用全新的临时目录完成以下步骤：安装依赖、运行 `npm run lint`、以 webpack 模式执行 `next build`、清理开发依赖、构建 Socket 服务器包并整理运行所需文件。
-3. 构建完成后可在 `dist/` 目录下获得形如 `coordination-v2-yyyymmddhhmmss.zip` 的产物，其中包含 `frontend/`、`server/`、`deploy.sh`、`ecosystem.config.js` 与更新后的 `README.md`。
-
-> 依赖要求：本地需要安装 `npm`、`zip` 与 `rsync`。
-
-### 服务器部署步骤
-
-1. 将生成的 zip 包上传到目标服务器并解压：`unzip coordination-v2-*.zip`。
-2. 启动 Socket 服务：
-   ```bash
-   cd coordination-v2-*/server
-   npm start
-   ```
-3. 启动 Next.js 前端（可按需指定监听地址和端口）：
-   ```bash
-   cd ../frontend
-   npm run start -- --hostname 0.0.0.0 --port 3000
-   ```
-4. 如需运行健康检查，可在解压目录下执行 `node health-check.js`。
-
-## 📖 使用方法
-
-### 创建新文档
-
-1. 在首页点击 "创建新文档" 按钮
-2. 系统会自动生成 8 位房间代码
-3. 自动跳转到编辑器页面
-4. 分享房间代码给其他用户
-
-### 加入已有文档
-
-1. 输入 8 位房间代码
-2. 输入您的用户名
-3. 点击 "加入文档" 按钮
-4. 进入协同编辑环境
-
-### 协同编辑
-
-- 在编辑器中输入内容，会实时同步给房间内所有用户
-- 右侧显示在线用户列表和光标位置
-- 不同用户用不同颜色标识
-- 支持多人同时编辑，自动处理冲突
-
-## 🔐 安全特性
-
-### AES 加密
-
-所有传输数据都经过 AES 对称加密：
-
-```typescript
-// 加密
-const encrypted = encryptText(content, documentCode);
-
-// 解密
-const decrypted = decryptText(encrypted, documentCode);
-```
-
-**注意**: 文档代码作为加密密钥，建议使用复杂的代码以提高安全性。
-
-### 操作变换（OT）算法
-
-实现了简单但有效的 OT 算法来处理并发编辑冲突：
-
-- **插入操作**: 自动调整后续操作的位置
-- **删除操作**: 处理重叠删除，避免数据不一致
-- **混合操作**: 正确处理插入和删除同时发生的情况
-- **优先级**: 使用时间戳和用户 ID 确定操作优先级
+`bash build-release.sh` 产出 `dist/coordination-v2-*.zip`（含 `frontend/` + `server/` + 运维文件），供无法直连 scp 的环境手动部署。注意：zip 内不含 `.env.local`，消费者需自行设置 `NEXT_PUBLIC_WS_URL` 后再构建。
 
 ## 🏗 架构说明
 
-### 客户端架构
-
-1. **首页 (`app/page.tsx`)**: 提供创建/加入房间的入口
-2. **编辑器页面 (`app/editor/[code]/page.tsx`)**: 主编辑界面
-3. **协同 Hook (`lib/useCollaboration.ts`)**: 封装 Socket.IO 连接和消息处理
-4. **加密工具 (`lib/crypto.ts`)**: AES 加密/解密功能
-
-### 服务器架构
-
-1. **主服务器 (`server/index.js`)**: Express + Socket.IO 服务器
-2. **房间管理器 (`server/roomManager.js`)**: 管理房间和用户状态（内存存储）
-3. **OT 算法 (`server/otAlgorithm.js`)**: 操作变换和应用
-4. **加密工具 (`server/crypto.js`)**: 服务端加密支持
-
-### 消息流程
+### 协同数据流
 
 ```
-客户端                    服务器                    其他客户端
-  |                        |                          |
-  |-- join-room --------->|                          |
-  |<------- room-state ---|                          |
-  |                        |                          |
-  |-- operation --------->|                          |
-  |                        |-- transform ----------->|
-  |                        |<-- operation -----------|
-  |<------ operation ------|                          |
-  |                        |                          |
-  |-- cursor-update ----->|                          |
-  |                        |-- cursor-update -------->|
+客户端 A                     y-websocket 服务端                    客户端 B
+  │  WebsocketProvider             (server/index.js)                     │
+  │── Y.Doc update (CRDT) ───────▶ setupWSConnection ─────▶ 广播 ──────▶│ applyUpdate
+  │◀──── awareness (光标/用户) ─────────────────────────────────────────│
 ```
 
-## 🚢 部署指南
+- 每个「房间」= 一个 Yjs 文档，以房间码为 doc name。
+- 服务端用 `y-websocket/bin/utils.setupWSConnection` 仅做中继与持久化，不解析内容。
+- 客户端通过 `lib/useCollaboration.ts` 建立 `WebsocketProvider`，绑定 `@mdxeditor/editor`。
 
-### 自有服务器部署
+### HTTP 接口（WS 服务端，:8101）
 
-1. **安装 Node.js**（推荐 v18 或更高版本）
+- `GET /health` → `{ status, timestamp, totalRooms, totalUsers, rooms:[{code,userCount,lastActivity}] }`
+- `POST /upload`（`multipart/form-data`，字段名 `image`，≤5MB，jpg/png/gif/webp）→ `{ url: "/uploads/<name>" }`
+- `GET /uploads/<name>` → 静态图片
 
-2. **克隆并构建项目**：
-```bash
-git clone <repository-url>
-cd coordination-v2
+## 📝 使用方法
 
-# 安装依赖
-npm install
-cd server && npm install && cd ..
-
-# 构建前端
-npm run build
-```
-
-3. **配置环境变量**：
-```bash
-# .env.local
-PORT=http://your-server-ip:3001
-
-# server/.env (可选)
-PORT=3001
-CLIENT_URL=http://your-server-ip:3000
-```
-
-4. **使用 PM2 部署**（推荐）：
-```bash
-# 安装 PM2
-npm install -g pm2
-
-# 启动 WebSocket 服务器
-pm2 start server/index.js --name ws-server
-
-# 启动 Next.js 应用
-pm2 start npm --name next-app -- start
-
-# 保存配置
-pm2 save
-pm2 startup
-```
-
-5. **配置 Nginx 反向代理**（可选）：
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    # Next.js 应用
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # WebSocket 服务器
-    location /socket.io/ {
-        proxy_pass http://localhost:3001;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
-```
+- **创建文档**：首页点「创建新文档」→ 生成 8 位房间码 → 进入编辑器 → 把链接/房间码分享给他人。
+- **加入文档**：输入 8 位房间码与用户名 →「加入文档」。
+- **协同编辑**：编辑内容实时同步；右侧显示在线用户与光标；可粘贴/拖入或工具栏插入图片。
 
 ## 🔧 开发说明
 
-### 扩展功能建议
-
-1. **更强的 OT 算法**: 集成专业的 OT 库如 ShareJS 或 Y.js
-2. **持久化存储**: 添加 Redis 或 MongoDB 保存文档历史
-3. **用户认证**: 集成登录系统和权限管理
-4. **版本控制**: 实现文档版本管理和回滚功能
-5. **富文本编辑**: 集成 MDX 编辑器或其他富文本编辑器
-6. **文件上传**: 支持图片和附件上传
-7. **评论系统**: 添加文档评论和批注功能
-
-### 调试
-
-开发时可以在浏览器控制台查看：
-- Socket.IO 连接状态
-- 操作日志
-- 用户加入/离开事件
-
-服务器端日志会显示：
-- 房间创建/销毁
-- 用户连接/断开
-- 操作处理详情
-
-### 性能优化
-
-- 操作历史限制为最近 100 条
-- 空房间 30 分钟后自动清理
-- 心跳检测保持连接活跃
-- 使用 WebSocket 而不是轮询
-
-## 📝 API 接口
-
-### WebSocket 事件
-
-**客户端 -> 服务器**:
-- `join-room`: 加入房间
-- `leave-room`: 离开房间
-- `operation`: 发送编辑操作
-- `cursor-update`: 更新光标位置
-- `ping`: 心跳检测
-
-**服务器 -> 客户端**:
-- `room-state`: 房间初始状态
-- `operation`: 广播编辑操作
-- `user-joined`: 用户加入通知
-- `user-left`: 用户离开通知
-- `cursor-update`: 光标位置更新
-- `error`: 错误消息
-- `pong`: 心跳响应
-
-### HTTP 接口
-
-- `GET /health`: 健康检查和统计信息
+- 强制浅色主题：`app/layout.tsx` 给 `<html>` 设 `class="light"`，并在 `globals.css` 用 `@custom-variant dark` 把 dark 变体改为基于 `.dark` 类（永不触发）。
+- 服务端房间状态为内存存储（`server/index.js` 的 `roomStats`），重启后清空。
+- `lib/crypto.ts` 提供客户端 AES 工具，可按需在编辑器侧启用。
 
 ## 📄 许可证
 
 MIT
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📞 支持
-
-如有问题，请查看：
-- [Socket.IO 文档](https://socket.io/docs/)
-- [Next.js 文档](https://nextjs.org/docs)
-- 项目 Issue 页面

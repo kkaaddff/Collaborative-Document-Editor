@@ -117,7 +117,7 @@ function EditorPageContent() {
   const handleImageUpload = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append("image", file);
-    const baseUrl = process.env.BASE_URL || "http://localhost:3001";
+    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
     try {
       const response = await fetch(`${baseUrl}/upload`, {
         method: "POST",
