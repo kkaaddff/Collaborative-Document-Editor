@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/*
+ * 全局强制浅色主题：将 dark 变体重写为基于 `.dark` 类触发，
+ * 取代 Tailwind v4 默认的 `prefers-color-scheme` 媒体查询策略。
+ * 应用永远不会添加 `.dark` 类（<html> 使用 `.light`），
+ * 因此所有 `dark:` 前缀样式永久失效，不再随浏览器/系统主题变动。
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
