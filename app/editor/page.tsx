@@ -37,6 +37,7 @@ import {
   BlockTypeSelect,
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
+import "@/lib/fixTableCopy"; // 修复表格无法拷贝（给 TableNode 补 exportDOM）
 import { useCollaboration } from "@/lib/useCollaboration";
 import { User } from "@/types";
 
