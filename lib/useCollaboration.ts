@@ -19,6 +19,8 @@ interface UseCollaborationProps {
   userId: string;
   onContentChange: Dispatch<SetStateAction<string>>;
   onUsersChange: Dispatch<SetStateAction<User[]>>;
+  /** 共享房间名变化时回调（来自 Yjs meta map，房间内全员同步）。 */
+  onRoomNameChange: (name: string) => void;
 }
 
 const USER_COLORS = [
@@ -81,6 +83,7 @@ export function useCollaboration({
   userId,
   onContentChange,
   onUsersChange,
+  onRoomNameChange,
 }: UseCollaborationProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +91,7 @@ export function useCollaboration({
   const docRef = useRef<Y.Doc | null>(null);
   const textRef = useRef<Y.Text | null>(null);
   const awarenessRef = useRef<Awareness | null>(null);
+  const metaRef = useRef<Y.Map<unknown> | null>(null);
   const contentRef = useRef<string>("");
 
   useEffect(() => {
@@ -102,10 +106,12 @@ export function useCollaboration({
       params: { userId },
     });
     const yText = doc.getText("document");
+    const yMeta = doc.getMap<unknown>("meta");
     const awareness = provider.awareness;
 
     docRef.current = doc;
     textRef.current = yText;
+    metaRef.current = yMeta;
     awarenessRef.current = awareness;
 
     const updateUsers = () => {
@@ -148,6 +154,12 @@ export function useCollaboration({
     yText.observe(handleTextUpdate);
     awareness.on("change", updateUsers);
 
+    // 共享房间名（Yjs meta map，房间内全员同步；一人改名 → 全员 observe 生效）
+    const readRoomName = () =>
+      onRoomNameChange((yMeta.get("roomName") as string) ?? "");
+    yMeta.observe(readRoomName);
+    readRoomName();
+
     const initialContent = yText.toString();
     contentRef.current = initialContent;
     onContentChange(initialContent);
@@ -164,6 +176,7 @@ export function useCollaboration({
 
     return () => {
       yText.unobserve(handleTextUpdate);
+      yMeta.unobserve(readRoomName);
       awareness.off("change", updateUsers);
       provider.destroy();
       doc.destroy();
@@ -226,10 +239,16 @@ export function useCollaboration({
     [userId, userName]
   );
 
+  // 重命名房间（写共享 meta map，CRDT 收敛，全员同步）
+  const renameRoom = useCallback((name: string) => {
+    metaRef.current?.set("roomName", name);
+  }, []);
+
   return {
     isConnected,
     error,
     applyLocalChange,
     sendCursorPosition,
+    renameRoom,
   };
 }

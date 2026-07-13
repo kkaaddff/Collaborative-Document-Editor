@@ -39,6 +39,7 @@ import {
 import "@mdxeditor/editor/style.css";
 import "@/lib/fixTableCopy"; // 修复表格无法拷贝（给 TableNode 补 exportDOM）
 import { useCollaboration } from "@/lib/useCollaboration";
+import { upsertRecentRoom } from "@/lib/storage";
 import { User } from "@/types";
 
 function EditorPageContent() {
@@ -74,11 +75,14 @@ function EditorPageContent() {
 
   const [content, setContent] = useState("");
   const [users, setUsers] = useState<User[]>([]);
+  const [roomName, setRoomName] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
   const editorRef = useRef<MDXEditorMethods | null>(null);
   const isUpdatingFromRemote = useRef(false);
   const contentRef = useRef<string>("");
 
-  const { isConnected, error, applyLocalChange } = useCollaboration({
+  const { isConnected, error, applyLocalChange, renameRoom } = useCollaboration({
     roomCode,
     userName,
     userId,
@@ -102,7 +106,30 @@ function EditorPageContent() {
       }
     },
     onUsersChange: setUsers,
+    onRoomNameChange: setRoomName,
   });
+
+  // 共享房间名同步到本地「最近房间」快照，首页列表随之保鲜
+  useEffect(() => {
+    if (roomCode && roomName) {
+      upsertRecentRoom({ code: roomCode, name: roomName });
+    }
+  }, [roomCode, roomName]);
+
+  const startRename = () => {
+    setNameDraft(roomName);
+    setEditingName(true);
+  };
+  const commitRename = () => {
+    const next = nameDraft.trim();
+    if (next) {
+      renameRoom(next);
+    }
+    setEditingName(false);
+  };
+  const cancelRename = () => {
+    setEditingName(false);
+  };
 
   const handleContentChange = useCallback(
     (markdown: string, initialMarkdownNormalize: boolean) => {
@@ -169,6 +196,35 @@ function EditorPageContent() {
             <span className="text-sm text-gray-600 dark:text-gray-400">
               房间:
             </span>
+            {editingName ? (
+              <input
+                autoFocus
+                type="text"
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitRename();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancelRename();
+                  }
+                }}
+                onBlur={commitRename}
+                maxLength={40}
+                placeholder="输入房间名"
+                className="px-2 py-1 rounded text-sm border border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 max-w-[12rem]"
+              />
+            ) : (
+              <button
+                onClick={startRename}
+                title="点击重命名房间"
+                className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[12rem]"
+              >
+                {roomName || "未命名文档"}
+              </button>
+            )}
             <code className="bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded text-sm font-mono text-gray-900 dark:text-white">
               {roomCode}
             </code>
