@@ -13,20 +13,23 @@ APP_SSH="root@112.124.21.6"
 REMOTE_APP_DIR="/home/coordinationv2/coordination—v2"
 
 # 静态前端宿主机目录
-# 1Panel 的 OpenResty 站点 index，rsync 的目标 (容器内映射为 /www/sites/coordination/index)
-STATIC_DIR="/opt/1panel/apps/openresty/openresty/www/sites/coordination/index"
+# 1Panel 的 OpenResty 站点 index，tar 上传的目标 (容器内映射为 /www/sites/docz/index)
+STATIC_DIR="/opt/1panel/apps/openresty/openresty/www/sites/docz/index"
 
 # nginx 站点配置的宿主机路径
 # bind-mount 进 openresty 容器的 conf.d/，覆盖即生效
-NGINX_CONF_DST="/opt/1panel/apps/openresty/openresty/conf/conf.d/coordination.conf"
+NGINX_CONF_DST="/opt/1panel/apps/openresty/openresty/conf/conf.d/docz.hengheng.online.conf"
 
 # 前端公网访问地址 (健康检查用)
-PUBLIC_WEB_URL="https://doc.hengheng.online"
+PUBLIC_WEB_URL="http://docz.hengheng.online"
 
 # 协同 WebSocket 公网地址 (前端构建时以 NEXT_PUBLIC_WS_URL 内联进静态产物)
-# 走同域名 wss:经 1Panel 反代(443)→ 应用服务器 :8100(coordination.conf)
-#   → /ws 剥前缀转发到 :8101。y-websocket/浏览器把 https 自动当 wss。
-WS_PUBLIC_URL="https://doc.hengheng.online/ws"
+# 与前端同域名，直连 80 端口 (docz.hengheng.online.conf)：
+#   /ws 剥前缀转发到 :8101。y-websocket/浏览器把 http 自动当 ws。
+WS_PUBLIC_URL="http://docz.hengheng.online/ws"
+
+# 健康检查强制解析 (docz DNS 记录未生效时仍可在服务器本机验证)
+HEALTH_RESOLVE="docz.hengheng.online:80:127.0.0.1"
 
 # WS 服务监听端口 (ecosystem.config.js 亦注入此 PORT；反代 8101 转发到此端口)
 WS_PORT=8101

@@ -17,6 +17,9 @@ die() { printf '\033[1;31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
 mkdir -p "$HERE/logs"
 
+# ---- 0. 站点目录 (nginx access_log 打开前目录必须存在) ----
+mkdir -p "$STATIC_DIR" "$(dirname "$STATIC_DIR")/log"
+
 # ---- 1. WS 服务依赖 ----
 log "安装 WS 服务依赖 (server/ npm ci --omit=dev)"
 ( cd "$HERE/server" && npm ci --omit=dev )
@@ -32,10 +35,10 @@ pm2 list | sed -n '1,5p'
 
 # ---- 3. nginx 站点配置覆盖 + 校验 + reload (失败自动回滚) ----
 log "覆盖 nginx 配置: $NGINX_CONF_DST"
-[ -f "$HERE/coordination.conf" ] || die "缺少 coordination.conf"
+[ -f "$HERE/site.conf" ] || die "缺少 site.conf"
 BACKUP="$NGINX_CONF_DST.bak.$(date +%s)"
 cp -a "$NGINX_CONF_DST" "$BACKUP" 2>/dev/null || true
-cp -f "$HERE/coordination.conf" "$NGINX_CONF_DST"
+cp -f "$HERE/site.conf" "$NGINX_CONF_DST"
 
 CID="$(detect_openresty_container)"
 if [ -z "$CID" ]; then
@@ -52,11 +55,13 @@ else
   die "openresty -t 失败，已回滚配置，未 reload"
 fi
 
-# ---- 4. 健康检查 ----
-log "健康检查"
-curl -sS -o /dev/null -w "  WEB  %{http_code}  ${PUBLIC_WEB_URL}/editor?code=healthcheck\n" \
+# ---- 4. 健康检查 (--resolve 绕过公网 DNS，域名未生效也能本机验证) ----
+log "健康检查 (--resolve $HEALTH_RESOLVE)"
+curl -sS -o /dev/null --resolve "$HEALTH_RESOLVE" \
+  -w "  WEB  %{http_code}  ${PUBLIC_WEB_URL}/editor?code=healthcheck\n" \
   "${PUBLIC_WEB_URL}/editor?code=healthcheck&name=deploy" || die "前端不可达"
-curl -sS -w "  WS   %{http_code}  ${WS_PUBLIC_URL}/health\n" \
+curl -sS --resolve "$HEALTH_RESOLVE" \
+  -w "  WS   %{http_code}  ${WS_PUBLIC_URL}/health\n" \
   "${WS_PUBLIC_URL}/health" || true
 
 ok "服务端重启完成"

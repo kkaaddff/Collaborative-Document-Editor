@@ -74,20 +74,17 @@ NEXT_PUBLIC_WS_URL=http://localhost:3001
 ### 拓扑
 
 ```
-浏览器  ──https/wss──▶  反向代理 (139.224.29.117, 1Panel OpenResty, 443)
-                                   │  全量转发 → 应用服务器 :8100
-                                   │  （需在 1Panel 反代里启用 WebSocket 支持,放行 Upgrade 头）
-                                   ▼
-                          应用服务器 (112.124.21.6)
-                                   │  :8100  OpenResty 容器 (coordination.conf)
-                                   │         ├ 静态前端 (root /www/sites/coordination/index)
-                                   │         └ /ws /upload /uploads /health → 反代到 :8101
-                                   │  :8101  PM2 coordination-ws (server/index.js)
+浏览器  ──http/ws──▶ 应用服务器 (112.124.21.6, docz.hengheng.online)
+                          │  :80   OpenResty 容器 (docz.hengheng.online.conf, host 网络)
+                          │        ├ 静态前端 (root /www/sites/docz/index)
+                          │        └ /ws /upload /uploads /health → 反代到 127.0.0.1:8101
+                          │  :8101  PM2 coordination-ws (server/index.js)
 ```
 
-- 反向代理仅做端口转发，**部署不涉及它**（1Panel 管理）。
+- 与同服务器其他 1Panel 站点（www/bitwarden/cookiecloud…）共享 80 端口，按 `server_name` 区分；**不另装系统 nginx**（80 已被 OpenResty 占用，且 nginx 本就是它）。
 - 所有部署参数集中在 `deploy/config.sh`（SSH、路径、WS 地址、端口、PM2 名）。
-- nginx 站点配置真源在 `deploy/nginx/coordination.conf`，每次部署覆盖到服务器并 reload。
+- nginx 站点配置真源在 `deploy/nginx/docz.hengheng.online.conf`，每次部署覆盖到服务器并 reload。
+- DNS：`docz.hengheng.online` 需 A 记录 → `112.124.21.6`（健康检查用 `--resolve` 本机直连，不依赖 DNS 生效）。
 
 ### 一键部署
 
@@ -115,10 +112,9 @@ npm run deploy         # = bash deploy/deploy.sh
 
 应用服务器上需先就位（仅首次，之后由 `npm run deploy` 维护）：
 
-1. 1Panel 建一个静态站点，端口 8100，index 指向 `/opt/1panel/apps/openresty/openresty/www/sites/coordination/index`；反向代理 8100/8101 转发到本机。
-2. 安装 `node@18`、`pm2`（`npm i -g pm2`）。
-3. PM2 自启：`pm2 startup && pm2 save`（可选）。
-4. 创建项目目录 `/home/coordinationv2/coordination—v2`（首次 deploy 会 tar 进去）。
+1. node@18 与 pm2（`npm i -g pm2`）；PM2 自启：`pm2 startup && pm2 save`（可选）。
+2. OpenResty（1Panel 自带即可）：`deploy/remote-restart.sh` 会自动建站点目录（index/log）并覆盖站点配置到 conf.d/。
+3. DNS 添加 A 记录：`docz.hengheng.online` → 服务器公网 IP。
 
 ### 手动运维
 
@@ -126,7 +122,7 @@ npm run deploy         # = bash deploy/deploy.sh
 # 服务器上
 pm2 list / pm2 logs coordination-ws / pm2 restart coordination-ws
 docker exec <openresty容器> openresty -s reload      # 改 nginx 后
-curl https://doc.hengheng.online/health
+curl http://docz.hengheng.online/health
 ```
 
 ### 离线打包（备选）

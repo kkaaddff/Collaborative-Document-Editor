@@ -60,7 +60,7 @@ scp -q \
   "$SCRIPT_DIR/config.sh" \
   "$SCRIPT_DIR/remote-restart.sh" \
   "$APP_SSH:$REMOTE_APP_DIR/"
-scp -q "$SCRIPT_DIR/nginx/coordination.conf" "$APP_SSH:$REMOTE_APP_DIR/coordination.conf"
+scp -q "$SCRIPT_DIR/nginx/docz.hengheng.online.conf" "$APP_SSH:$REMOTE_APP_DIR/site.conf"
 ok "服务端文件已上传"
 
 # ---- 6. 远端重启 ----
