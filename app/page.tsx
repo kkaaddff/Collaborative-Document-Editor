@@ -10,7 +10,11 @@ import {
 } from "@/lib/storage";
 import type { RecentRoom } from "@/types";
 
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
+// 默认走同源：fnos connect 的四级域名是随机的，构建期无法内联。
+// 浏览器运行时取 window.location.origin，https 会被 y-websocket/fetch 自动当 wss/https。
+const getWsUrl = () =>
+  process.env.NEXT_PUBLIC_WS_URL ||
+  (typeof window !== "undefined" ? window.location.origin : "");
 
 type OnlineRoom = { code: string; userCount: number };
 
@@ -92,7 +96,7 @@ export default function Home() {
   // 拉取服务器在线房间
   const fetchOnline = useCallback(async () => {
     try {
-      const res = await fetch(`${WS_URL}/health`);
+      const res = await fetch(`${getWsUrl()}/health`);
       if (!res.ok) return;
       const data = await res.json();
       const raw = (

@@ -101,6 +101,18 @@ app.get('/health', (_req, res) => {
   });
 });
 
+// 静态前端（Next.js 静态导出产物），与 WS 同端口同源，
+// 适配 fnos connect 随机四级域名反代的场景
+const staticDir = process.env.STATIC_DIR || path.join(__dirname, 'public');
+if (fs.existsSync(staticDir)) {
+  app.use(express.static(staticDir));
+  // 客户端路由兜底：非 API 的 GET 回到 index.html / 404.html
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' || req.path.startsWith('/uploads')) return next();
+    res.sendFile(path.join(staticDir, 'index.html'));
+  });
+}
+
 const httpServer = createServer(app);
 const wss = new WebSocketServer({ server: httpServer });
 

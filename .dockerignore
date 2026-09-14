@@ -1,0 +1,12 @@
+.git
+node_modules
+.next
+out
+dist
+logs
+.release-staging
+deploy
+server/node_modules
+server/uploads
+*.log
+.DS_Store

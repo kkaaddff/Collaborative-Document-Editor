@@ -99,7 +99,8 @@ export function useCollaboration({
       return;
     }
 
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
+    // 默认同源：适配 fnos connect 随机四级域名（构建期无法内联地址）
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || window.location.origin;
     const doc = new Y.Doc();
     const provider = new WebsocketProvider(wsUrl, roomCode, doc, {
       connect: true,

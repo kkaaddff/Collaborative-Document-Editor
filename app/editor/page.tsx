@@ -145,7 +145,8 @@ function EditorPageContent() {
   const handleImageUpload = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append("image", file);
-    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
+    // 默认同源：适配 fnos connect 随机四级域名
+    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || window.location.origin;
     try {
       const response = await fetch(`${baseUrl}/upload`, {
         method: "POST",

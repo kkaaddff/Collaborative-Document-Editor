@@ -1,0 +1,13 @@
+# coordination-v2 —— all-in-one（前端静态 + 协同 WS 同端口）
+# 宿主机 9091 ← fnos connect 映射为随机四级域名 https://<random>.fnos.net
+# 证书由 fnos 宿主处理，容器内只跑 HTTP。
+services:
+  coordination:
+    build: .
+    image: coordination-v2:local
+    container_name: coordination
+    restart: unless-stopped
+    ports:
+      - "9091:9091"
+    volumes:
+      - ./data/uploads:/app/server/uploads
