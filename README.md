@@ -74,13 +74,14 @@ NEXT_PUBLIC_WS_URL=http://localhost:3001
 ### 拓扑
 
 ```
-浏览器  ──www.hengheng.online──▶  反向代理 (139.224.29.117, 1Panel OpenResty)
-                                   │  :8100 → 静态前端
-                                   │  :8101 → WebSocket  (含 /health /upload /uploads)
+浏览器  ──https/wss──▶  反向代理 (139.224.29.117, 1Panel OpenResty, 443)
+                                   │  全量转发 → 应用服务器 :8100
+                                   │  （需在 1Panel 反代里启用 WebSocket 支持,放行 Upgrade 头）
                                    ▼
                           应用服务器 (112.124.21.6)
-                                   │  :8100  OpenResty 容器托管静态文件
-                                   │         (root /www/sites/coordination/index)
+                                   │  :8100  OpenResty 容器 (coordination.conf)
+                                   │         ├ 静态前端 (root /www/sites/coordination/index)
+                                   │         └ /ws /upload /uploads /health → 反代到 :8101
                                    │  :8101  PM2 coordination-ws (server/index.js)
 ```
 
@@ -125,7 +126,7 @@ npm run deploy         # = bash deploy/deploy.sh
 # 服务器上
 pm2 list / pm2 logs coordination-ws / pm2 restart coordination-ws
 docker exec <openresty容器> openresty -s reload      # 改 nginx 后
-curl http://www.hengheng.online:8101/health
+curl https://doc.hengheng.online/health
 ```
 
 ### 离线打包（备选）

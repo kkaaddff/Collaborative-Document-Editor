@@ -21,10 +21,12 @@ STATIC_DIR="/opt/1panel/apps/openresty/openresty/www/sites/coordination/index"
 NGINX_CONF_DST="/opt/1panel/apps/openresty/openresty/conf/conf.d/coordination.conf"
 
 # 前端公网访问地址 (健康检查用)
-PUBLIC_WEB_URL="http://www.hengheng.online:8100"
+PUBLIC_WEB_URL="https://doc.hengheng.online"
 
 # 协同 WebSocket 公网地址 (前端构建时以 NEXT_PUBLIC_WS_URL 内联进静态产物)
-WS_PUBLIC_URL="http://www.hengheng.online:8101"
+# 走同域名 wss:经 1Panel 反代(443)→ 应用服务器 :8100(coordination.conf)
+#   → /ws 剥前缀转发到 :8101。y-websocket/浏览器把 https 自动当 wss。
+WS_PUBLIC_URL="https://doc.hengheng.online/ws"
 
 # WS 服务监听端口 (ecosystem.config.js 亦注入此 PORT；反代 8101 转发到此端口)
 WS_PORT=8101
