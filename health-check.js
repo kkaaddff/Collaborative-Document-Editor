@@ -8,8 +8,9 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const http = require('http');
 
-const WS_URL = process.env.PORT || 'http://localhost:3001';
-const url = new URL('/health', WS_URL);
+// PORT 若设置则是纯端口号（如 ecosystem 的 8101），需拼成完整 base URL
+const port = process.env.PORT || '3001';
+const url = new URL('/health', `http://localhost:${port}`);
 
 console.log(`🔍 检查服务器健康状态: ${url.href}\n`);
 
@@ -50,7 +51,7 @@ http.get(url, (res) => {
   console.error('❌ 服务器连接失败:', error.message);
   console.error('\n请确保:');
   console.error('  1. WebSocket 服务器已启动 (npm run server)');
-  console.error('  2. 端口 3001 没有被占用');
+  console.error(`  2. 端口 ${port} 没有被占用`);
   console.error('  3. .env.local 配置正确');
   process.exit(1);
 });
