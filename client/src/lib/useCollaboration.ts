@@ -8,6 +8,7 @@ import {
 } from "react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
+import { IndexeddbPersistence } from "y-indexeddb";
 import { getServerBase } from "./serverConfig";
 import { User } from "@/types";
 
@@ -107,6 +108,18 @@ export function useCollaboration({
     const yMeta = doc.getMap<unknown>("meta");
     const awareness = provider.awareness;
 
+    // 离线持久化（IndexedDB）：断网可编辑，重连后 CRDT 自动合并；
+    // 隐私模式等不可用场景静默跳过，不影响在线协同
+    let persistence: IndexeddbPersistence | null = null;
+    try {
+      persistence = new IndexeddbPersistence(
+        `coordination-room-${roomCode}`,
+        doc
+      );
+    } catch {
+      persistence = null;
+    }
+
     docRef.current = doc;
     textRef.current = yText;
     metaRef.current = yMeta;
@@ -173,6 +186,7 @@ export function useCollaboration({
       yText.unobserve(handleTextUpdate);
       yMeta.unobserve(readRoomName);
       awareness.off("change", updateUsers);
+      persistence?.destroy();
       provider.destroy();
       doc.destroy();
     };

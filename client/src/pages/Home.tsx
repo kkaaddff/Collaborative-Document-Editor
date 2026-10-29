@@ -12,6 +12,8 @@ import { getServerBase, saveServer } from "@/lib/serverConfig";
 import { parseJoinPayload } from "@/lib/qr";
 import { QrModal } from "@/components/QrModal";
 import { ScanModal } from "@/components/ScanModal";
+import { isTauri } from "@/platform";
+import { onTrayAction, pushRecentRooms } from "@/platform/tray";
 import type { RecentRoom } from "@/types";
 
 type OnlineRoom = { code: string; userCount: number };
@@ -131,6 +133,27 @@ export default function Home() {
     removeRecentRoom(code);
     setRecentRooms(getRecentRooms());
   };
+
+  // 桌面：最近房间 → 托盘菜单（菜单即达）
+  useEffect(() => {
+    if (!isTauri()) return;
+    pushRecentRooms(recentRooms);
+  }, [recentRooms]);
+
+  // 桌面：托盘动作（新建/直达房间）→ 导航
+  useEffect(() => {
+    if (!isTauri()) return;
+    let disposed = false;
+    let un: (() => void) | undefined;
+    onTrayAction((action) => {
+      if (action.type === "new") enterRoom(generateRoomCode());
+      else enterRoom(action.code);
+    }).then((u) => (disposed ? u() : (un = u)));
+    return () => {
+      disposed = true;
+      un?.();
+    };
+  }, [enterRoom]);
 
   // code → 本地名（在线房间列表交叉引用显示）
   const nameByCode = new Map(recentRooms.map((r) => [r.code, r.name]));
