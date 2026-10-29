@@ -3,6 +3,7 @@
 # dependencies
 /node_modules
 /server/node_modules
+/client/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -17,6 +18,11 @@
 # next.js
 /.next/
 /out/
+
+# client 构建产物与 Tauri
+/client/dist
+/client/src-tauri/target
+/client/src-tauri/gen/schemas
 
 # production
 /build

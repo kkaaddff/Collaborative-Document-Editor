@@ -1,5 +1,5 @@
 // 编辑器插件装配。工厂形式：imageUploadHandler 引用变化时才重建插件数组，
-// 页面里用 useMemo 持有——原先每次 render 都新建一整套插件实例。
+// 页面里用 useMemo 持有——避免每次 render 都新建一整套插件实例。
 import {
   headingsPlugin,
   listsPlugin,

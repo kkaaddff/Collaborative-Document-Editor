@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Dispatch,
   SetStateAction,
@@ -10,7 +8,7 @@ import {
 } from "react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
-import { getServerBase } from "@/lib/serverBase";
+import { getServerBase } from "./serverConfig";
 import { User } from "@/types";
 
 interface UseCollaborationProps {
@@ -98,7 +96,7 @@ export function useCollaboration({
       return;
     }
 
-    // 默认同源：适配 fnos connect 随机四级域名（构建期无法内联地址）
+    // 运行时解析服务器地址（URL 参数 > 已保存配置 > dev 环境变量 > 同源）
     const wsUrl = getServerBase();
     const doc = new Y.Doc();
     const provider = new WebsocketProvider(wsUrl, roomCode, doc, {
@@ -178,7 +176,6 @@ export function useCollaboration({
       provider.destroy();
       doc.destroy();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyLocalChange = useCallback(

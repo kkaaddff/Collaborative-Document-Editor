@@ -1,5 +1,3 @@
-"use client";
-
 // 顶栏：房间名（就地重命名，状态内聚于此）+ 房间码复制 + 连接状态 + 退出。
 import { useState } from "react";
 

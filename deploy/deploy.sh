@@ -28,23 +28,19 @@ NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
 [ "$NODE_MAJOR" -ge 18 ] || die "需要 node >= 18，当前 $(node -v)"
 ok "node $(node -v) / npm $(npm -v)"
 
-# ---- 2. 写入构建期环境变量 (不污染本地 dev 的 .env.local) ----
-# Next 构建 (NODE_ENV=production) 优先级: .env.production.local > .env.local
-log "写入 .env.production.local (NEXT_PUBLIC_WS_URL=$WS_PUBLIC_URL)"
-printf 'NEXT_PUBLIC_WS_URL=%s\n' "$WS_PUBLIC_URL" > "$PROJECT_DIR/.env.production.local"
+# ---- 2. 本地构建 (client/, Vite → dist/) ----
+# v3 起服务器地址是运行时配置（同源回退/扫码/设置页），构建不再内联任何地址。
+log "安装前端依赖 (client/ npm ci, 走项目 .npmrc 淘宝源)"
+( cd "$PROJECT_DIR/client" && npm ci )
+log "构建静态产物 (vite build → client/dist/)"
+( cd "$PROJECT_DIR/client" && npm run build )
+[ -d "$PROJECT_DIR/client/dist" ] || die "构建未生成 client/dist/"
+ok "client/dist/ 已生成 ($(find "$PROJECT_DIR/client/dist" -type f | wc -l | tr -d ' ') 个文件)"
 
-# ---- 3. 本地构建 ----
-log "安装前端依赖 (npm ci, 走项目 .npmrc 淘宝源)"
-( cd "$PROJECT_DIR" && npm ci )
-log "构建静态产物 (next build → out/)"
-( cd "$PROJECT_DIR" && npm run build )
-[ -d "$PROJECT_DIR/out" ] || die "构建未生成 out/"
-ok "out/ 已生成 ($(find "$PROJECT_DIR/out" -type f | wc -l | tr -d ' ') 个文件)"
-
-# ---- 4. 上传静态前端 (先清空目标，再 tar 解包；纯构建产物无运行时状态) ----
+# ---- 3. 上传静态前端 (先清空目标，再 tar 解包；纯构建产物无运行时状态) ----
 log "上传静态前端 → $APP_SSH:$STATIC_DIR (先清空)"
 ssh "$APP_SSH" "mkdir -p '$STATIC_DIR' && find '$STATIC_DIR' -mindepth 1 -delete"
-tar czf - -C "$PROJECT_DIR/out" . | ssh "$APP_SSH" "tar xzf - --no-same-owner -C '$STATIC_DIR'"
+tar czf - -C "$PROJECT_DIR/client/dist" . | ssh "$APP_SSH" "tar xzf - --no-same-owner -C '$STATIC_DIR'"
 ok "静态前端已同步"
 
 # ---- 5. 上传服务端代码 (保留远端 uploads / node_modules) ----

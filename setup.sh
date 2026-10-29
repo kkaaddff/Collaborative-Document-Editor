@@ -17,8 +17,8 @@ echo "✓ npm 版本: $(npm -v)"
 echo ""
 
 # 安装前端依赖
-echo "📦 正在安装前端依赖..."
-npm install
+echo "📦 正在安装前端依赖 (client/)..."
+(cd client && npm install)
 
 if [ $? -ne 0 ]; then
     echo "❌ 前端依赖安装失败"
@@ -42,10 +42,10 @@ cd ..
 echo "✓ 服务器依赖安装完成"
 echo ""
 
-# 删除并重建环境变量文件
-echo "📝 重建环境变量文件..."
-echo "NEXT_PUBLIC_WS_URL=http://localhost:3001" > .env.local
-echo "✅ 环境变量文件已重建 (.env.local: NEXT_PUBLIC_WS_URL)"
+# 重建客户端 dev 环境变量文件
+echo "📝 重建 client/.env.local ..."
+echo "VITE_SERVER_URL=http://localhost:3001" > client/.env.local
+echo "✅ 环境变量文件已重建 (client/.env.local: VITE_SERVER_URL)"
 
 # 创建日志目录
 if [ ! -d logs ]; then

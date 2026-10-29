@@ -1,5 +1,3 @@
-"use client";
-
 // 纯客户端 localStorage 工具：最近房间列表 + 通用同步 hook
 // （用户名经 useLocalStorageState(USERNAME_KEY) 持久化）。
 // 所有读写都带 SSR 守卫与 try/catch 降级（隐私模式 / 解析失败不致崩溃）。
@@ -82,7 +80,7 @@ function listenKey(key: string, onChange: () => void): () => void {
 
 /**
  * 与 localStorage 同步的 state（useSyncExternalStore 实现）。
- * SSR/静态导出安全：服务端快照恒为 initial，水合后自动切换真实值。
+ * 静态导出/SSR 安全：服务端快照恒为 initial，水合后自动切换真实值。
  * 同标签页写入即时生效，跨标签页经 storage 事件同步。
  */
 export function useLocalStorageState<T>(

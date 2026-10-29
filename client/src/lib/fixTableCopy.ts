@@ -56,7 +56,7 @@ function inlineToHtml(nodes?: MdastNode[]): string {
           return "<br />";
         case "link":
           return `<a href="${escapeAttr(n.url ?? "")}"${
-            n.title ? ` title="${escapeAttr(n.title)}"` : ""
+            n.title ? ` title="${escapeAttr(n.title ?? "")}"` : ""
           }>${inlineToHtml(n.children)}</a>`;
         case "image":
           return `<img src="${escapeAttr(n.url ?? "")}" alt="${escapeAttr(

@@ -1,29 +1,20 @@
-"use client";
-
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import type { MDXEditorMethods } from "@mdxeditor/editor";
 import { MDXEditor } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
 import "@/lib/fixTableCopy"; // 修复表格无法拷贝（给 TableNode 补 exportDOM）
 import { useCollaboration } from "@/lib/useCollaboration";
-import { getServerBase } from "@/lib/serverBase";
+import { getServerBase } from "@/lib/serverConfig";
 import { upsertRecentRoom } from "@/lib/storage";
-import { createEditorPlugins } from "./editorConfig";
-import { RoomHeader } from "./RoomHeader";
-import { UsersPanel } from "./UsersPanel";
+import { createEditorPlugins } from "@/components/editorConfig";
+import { RoomHeader } from "@/components/RoomHeader";
+import { UsersPanel } from "@/components/UsersPanel";
 import { User } from "@/types";
 
-function EditorPageContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+export default function Editor() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
   const roomCode = useMemo(
     () => searchParams.get("code")?.toUpperCase() ?? "",
@@ -31,21 +22,14 @@ function EditorPageContent() {
   );
   const userName = searchParams.get("name") || "匿名用户";
   const [userId] = useState(
-    () => `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    () => `user-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
   );
-
-  // 确保只在客户端渲染，避免 hydration mismatch：
-  // MDXEditor 根据操作系统检测快捷键（Ctrl vs ⌘），服务端与客户端可能不一致
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!roomCode) {
-      router.replace("/");
+      navigate("/", { replace: true });
     }
-  }, [roomCode, router]);
+  }, [roomCode, navigate]);
 
   const [content, setContent] = useState("");
   const [users, setUsers] = useState<User[]>([]);
@@ -102,7 +86,7 @@ function EditorPageContent() {
   const handleImageUpload = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append("image", file);
-    // 默认同源：适配 fnos connect 随机四级域名
+    // 运行时解析服务器地址（直连 IP 或同源）
     const baseUrl = getServerBase();
     try {
       const response = await fetch(`${baseUrl}/upload`, {
@@ -144,7 +128,7 @@ function EditorPageContent() {
         roomName={roomName}
         isConnected={isConnected}
         onRename={renameRoom}
-        onLeave={() => router.push("/")}
+        onLeave={() => navigate("/")}
       />
 
       {error && (
@@ -165,21 +149,15 @@ function EditorPageContent() {
               </span>
             </div>
             <div className="flex-1 overflow-auto">
-              {mounted ? (
-                <MDXEditor
-                  ref={editorRef}
-                  markdown={content}
-                  onChange={handleContentChange}
-                  plugins={plugins}
-                  contentEditableClassName="focus:outline-none min-h-[400px] p-4 text-gray-900 dark:text-gray-100"
-                  className="h-full dark:[&_.mdx-editor-toolbar]:bg-gray-800 [&_.mdx-editor-toolbar]:bg-white"
-                  spellCheck={true}
-                />
-              ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-gray-500">加载编辑器...</div>
-                </div>
-              )}
+              <MDXEditor
+                ref={editorRef}
+                markdown={content}
+                onChange={handleContentChange}
+                plugins={plugins}
+                contentEditableClassName="focus:outline-none min-h-[400px] p-4 text-gray-900 dark:text-gray-100"
+                className="h-full dark:[&_.mdx-editor-toolbar]:bg-gray-800 [&_.mdx-editor-toolbar]:bg-white"
+                spellCheck={true}
+              />
             </div>
           </div>
         </div>
@@ -187,13 +165,5 @@ function EditorPageContent() {
         <UsersPanel users={users} />
       </div>
     </div>
-  );
-}
-
-export default function EditorPage() {
-  return (
-    <Suspense fallback={<div className="p-6 text-center">加载中...</div>}>
-      <EditorPageContent />
-    </Suspense>
   );
 }

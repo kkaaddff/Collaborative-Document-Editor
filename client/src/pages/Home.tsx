@@ -1,7 +1,5 @@
-"use client";
-
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "react-router";
 import {
   getRecentRooms,
   removeRecentRoom,
@@ -10,13 +8,13 @@ import {
   USERNAME_KEY,
 } from "@/lib/storage";
 import { generateRoomCode, formatRelative } from "@/lib/roomCode";
-import { getServerBase } from "@/lib/serverBase";
+import { getServerBase } from "@/lib/serverConfig";
 import type { RecentRoom } from "@/types";
 
 type OnlineRoom = { code: string; userCount: number };
 
 export default function Home() {
-  const router = useRouter();
+  const navigate = useNavigate();
 
   // 用户名：localStorage 持久化、创建/加入共用、预填
   const [userName, setUserName] = useLocalStorageState<string>(USERNAME_KEY, "");
@@ -37,11 +35,8 @@ export default function Home() {
         getRecentRooms().find((r) => r.code === code)?.name ?? "";
       upsertRecentRoom({ code, name: existing });
       setRecentRooms(getRecentRooms());
-      router.push(
-        `/editor?code=${code}&name=${encodeURIComponent(resolveName())}`
-      );
+      navigate(`/editor?code=${code}&name=${encodeURIComponent(resolveName())}`);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [userName]
   );
 
