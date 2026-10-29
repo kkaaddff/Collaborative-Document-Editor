@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import {
   getRecentRooms,
   removeRecentRoom,
@@ -8,20 +8,30 @@ import {
   USERNAME_KEY,
 } from "@/lib/storage";
 import { generateRoomCode, formatRelative } from "@/lib/roomCode";
-import { getServerBase } from "@/lib/serverConfig";
+import { getServerBase, saveServer } from "@/lib/serverConfig";
+import { parseJoinPayload } from "@/lib/qr";
+import { QrModal } from "@/components/QrModal";
+import { ScanModal } from "@/components/ScanModal";
 import type { RecentRoom } from "@/types";
 
 type OnlineRoom = { code: string; userCount: number };
 
 export default function Home() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // 用户名：localStorage 持久化、创建/加入共用、预填
   const [userName, setUserName] = useLocalStorageState<string>(USERNAME_KEY, "");
 
-  const [roomCode, setRoomCode] = useState("");
+  // ?join=CODE：扫码落地（新设备未存用户名时 Join 页转来）预填房间码
+  const [roomCode, setRoomCode] = useState(
+    () => (searchParams.get("join") ?? "").toUpperCase()
+  );
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
   const [onlineRooms, setOnlineRooms] = useState<OnlineRoom[]>([]);
+  // 二维码弹层（当前展示的房间码）/ 扫码弹层
+  const [qrFor, setQrFor] = useState<string | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
   // 服务器连通状态：null=探测中 true/false=健康检查结果；地址仅本组件生命周期内固定（设置页保存后返回会重挂载重读）
   const [serverOk, setServerOk] = useState<boolean | null>(null);
   const serverBase = useMemo(() => getServerBase(), []);
@@ -61,6 +71,23 @@ export default function Home() {
       return;
     }
     enterRoom(code);
+  };
+
+  // 扫码结果 → 固化 server（载荷携带时）→ 进房
+  const handleScanResult = (text: string) => {
+    setScanOpen(false);
+    const payload = parseJoinPayload(text);
+    if (!payload) {
+      alert("未识别到有效的房间二维码");
+      return;
+    }
+    if (payload.server) saveServer(payload.server);
+    if (!userName.trim()) {
+      setRoomCode(payload.code);
+      alert("已识别房间，请填写用户名后加入");
+      return;
+    }
+    enterRoom(payload.code);
   };
 
   // 拉取服务器在线房间
@@ -221,12 +248,22 @@ export default function Home() {
                 />
               </div>
 
-              <button
-                type="submit"
-                className="w-full bg-gray-900 text-white font-semibold py-4 px-6 rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl"
-              >
-                加入文档
-              </button>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  className="flex-1 bg-gray-900 text-white font-semibold py-4 px-6 rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  加入文档
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScanOpen(true)}
+                  title="扫房间二维码直接加入"
+                  className="px-5 py-4 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  扫码加入
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -260,6 +297,13 @@ export default function Home() {
                         <span className="text-xs text-gray-400 shrink-0">
                           {formatRelative(room.lastUsed)}
                         </span>
+                      </button>
+                      <button
+                        onClick={() => setQrFor(room.code)}
+                        title="显示二维码"
+                        className="text-gray-300 hover:text-blue-500 px-1 leading-none"
+                      >
+                        ▦
                       </button>
                       <button
                         onClick={() => handleRemoveRecent(room.code)}
@@ -302,12 +346,31 @@ export default function Home() {
                         {room.userCount} 人在线
                       </span>
                     </button>
+                    <button
+                      onClick={() => setQrFor(room.code)}
+                      title="显示二维码"
+                      className="text-gray-300 hover:text-blue-500 px-1 leading-none"
+                    >
+                      ▦
+                    </button>
                   </li>
                 ))}
               </ul>
             )}
           </div>
         </div>
+
+        {/* 二维码 / 扫码弹层 */}
+        {qrFor && (
+          <QrModal
+            code={qrFor}
+            server={serverBase}
+            onClose={() => setQrFor(null)}
+          />
+        )}
+        {scanOpen && (
+          <ScanModal onResult={handleScanResult} onClose={() => setScanOpen(false)} />
+        )}
 
         {/* 功能特性 */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">

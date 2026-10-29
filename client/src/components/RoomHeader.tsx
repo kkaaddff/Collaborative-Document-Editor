@@ -1,5 +1,7 @@
-// 顶栏：房间名（就地重命名，状态内聚于此）+ 房间码复制 + 连接状态 + 退出。
+// 顶栏：房间名（就地重命名，状态内聚于此）+ 房间码复制 + 二维码 + 连接状态 + 退出。
 import { useState } from "react";
+import { QrModal } from "@/components/QrModal";
+import { getServerBase } from "@/lib/serverConfig";
 
 interface RoomHeaderProps {
   roomCode: string;
@@ -18,6 +20,7 @@ export function RoomHeader({
 }: RoomHeaderProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [showQr, setShowQr] = useState(false);
 
   const startRename = () => {
     setDraft(roomName);
@@ -82,6 +85,13 @@ export function RoomHeader({
           >
             复制
           </button>
+          <button
+            onClick={() => setShowQr(true)}
+            title="显示房间二维码（手机扫码直接加入）"
+            className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          >
+            二维码
+          </button>
         </div>
       </div>
 
@@ -104,6 +114,14 @@ export function RoomHeader({
           退出房间
         </button>
       </div>
+
+      {showQr && (
+        <QrModal
+          code={roomCode}
+          server={getServerBase()}
+          onClose={() => setShowQr(false)}
+        />
+      )}
     </div>
   );
 }
