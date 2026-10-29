@@ -190,6 +190,7 @@ curl http://docz.hengheng.online/health
 ## 🔧 开发说明
 
 - 强制浅色主题：`client/index.html` 设 `class="light"`，`index.css` 用 `@custom-variant dark` 让 dark 变体永不触发。
+- rollup 平台原生包（`client/package.json` 的 `optionalDependencies`）：npm 只把 optional 平台包按「生成 lockfile 的平台」写入（npm/cli#4828），跨平台 CI 会缺包；显式声明保证全平台进 lockfile。**升级 rollup 时必须同步改这三项版本**（与 rollup 严格同版）。
 - **收敛冒烟**（改 `useCollaboration`/Yjs 模型后必跑）：起服后 `cd server && node convergence-smoke.mjs`——双端 100 交错随机插入 + 删除 + meta + awareness 断言。
 - 本地仓库路径须为 ASCII（`coordination-v2`）：em-dash 路径会挂 Android Gradle 构建。
 - `client/src-tauri/gen/`（android 工程与 schemas）不入库，由 `android:init` / CI 生成。
