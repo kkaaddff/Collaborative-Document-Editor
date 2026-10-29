@@ -10,6 +10,26 @@ export const USERNAME_KEY = "coordination.username";
 const RECENT_ROOMS_KEY = "coordination.recentRooms";
 const MAX_RECENT_ROOMS = 20;
 
+/**
+ * 读取已保存用户名（裸字符串读取 + JSON 解析双兼容）。
+ * useLocalStorageState 以 JSON.stringify 写入；直接 getItem 会拿到带引号的
+ * `"张三"`——扫码落地页等不经 hook 读取的场景必须走这里。
+ */
+export function getSavedUsername(): string {
+  try {
+    const raw = window.localStorage.getItem(USERNAME_KEY) ?? "";
+    if (!raw) return "";
+    try {
+      const parsed = JSON.parse(raw);
+      return typeof parsed === "string" ? parsed : "";
+    } catch {
+      return raw; // 兼容历史裸字符串写入
+    }
+  } catch {
+    return "";
+  }
+}
+
 // ---------- 最近房间 ----------
 
 export function getRecentRooms(): RecentRoom[] {

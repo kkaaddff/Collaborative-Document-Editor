@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { saveServer } from "@/lib/serverConfig";
-import { USERNAME_KEY } from "@/lib/storage";
+import { getSavedUsername } from "@/lib/storage";
 
 export default function Join() {
   const [searchParams] = useSearchParams();
@@ -20,12 +20,8 @@ export default function Join() {
       return;
     }
 
-    let savedName = "";
-    try {
-      savedName = window.localStorage.getItem(USERNAME_KEY) ?? "";
-    } catch {
-      /* 隐私模式等场景当未保存处理 */
-    }
+    // 经 getSavedUsername：hook 存的是 JSON 串，裸读会带引号进编辑器
+    const savedName = getSavedUsername();
 
     if (savedName.trim()) {
       navigate(`/editor?code=${code}&name=${encodeURIComponent(savedName.trim())}`, {

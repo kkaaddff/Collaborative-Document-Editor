@@ -55,8 +55,13 @@ export default function Home() {
     [userName]
   );
 
-  // 创建新文档
+  // 创建新文档（与加入共用用户名校验，行为一致）
   const handleCreateNew = () => {
+    if (!userName.trim()) {
+      alert("请输入用户名");
+      document.getElementById("userName")?.focus();
+      return;
+    }
     enterRoom(generateRoomCode());
   };
 
@@ -66,10 +71,12 @@ export default function Home() {
     const code = roomCode.trim().toUpperCase();
     if (!code) {
       alert("请输入房间代码");
+      document.getElementById("roomCode")?.focus();
       return;
     }
     if (!userName.trim()) {
       alert("请输入用户名");
+      document.getElementById("userName")?.focus();
       return;
     }
     enterRoom(code);
@@ -355,27 +362,29 @@ export default function Home() {
               <ul className="space-y-2">
                 {onlineRooms.map((room) => (
                   <li key={room.code}>
-                    <button
-                      onClick={() => enterRoom(room.code)}
-                      className="w-full flex items-center gap-2 p-3 rounded-lg hover:bg-blue-50 transition-colors text-left"
-                    >
-                      <code className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-mono shrink-0">
-                        {room.code}
-                      </code>
-                      <span className="font-medium text-gray-900 truncate">
-                        {nameByCode.get(room.code) || "在线房间"}
-                      </span>
-                      <span className="ml-auto text-xs text-green-600 shrink-0">
-                        {room.userCount} 人在线
-                      </span>
-                    </button>
-                    <button
-                      onClick={() => setQrFor(room.code)}
-                      title="显示二维码"
-                      className="text-gray-300 hover:text-blue-500 px-1 leading-none"
-                    >
-                      ▦
-                    </button>
+                    <div className="group flex items-center gap-2 p-3 rounded-lg hover:bg-blue-50 transition-colors">
+                      <button
+                        onClick={() => enterRoom(room.code)}
+                        className="flex-1 flex items-center gap-2 text-left min-w-0"
+                      >
+                        <code className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-mono shrink-0">
+                          {room.code}
+                        </code>
+                        <span className="font-medium text-gray-900 truncate">
+                          {nameByCode.get(room.code) || "在线房间"}
+                        </span>
+                        <span className="ml-auto text-xs text-green-600 shrink-0">
+                          {room.userCount} 人在线
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => setQrFor(room.code)}
+                        title="显示二维码"
+                        className="text-gray-300 hover:text-blue-500 px-1 leading-none"
+                      >
+                        ▦
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>

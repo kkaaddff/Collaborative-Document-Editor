@@ -18,6 +18,15 @@ export function ScanModal({ onResult, onClose }: ScanModalProps) {
   const [error, setError] = useState("");
   const [waitingNative] = useState(hasNativeScanner());
 
+  // ESC 关闭（与二维码弹层一致）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   // 原生分支：插件自带全屏取景，这里只等结果（取消返回 null）
   useEffect(() => {
     if (!waitingNative) return;

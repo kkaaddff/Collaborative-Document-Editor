@@ -186,6 +186,16 @@ export function useCollaboration({
       yText.unobserve(handleTextUpdate);
       yMeta.unobserve(readRoomName);
       awareness.off("change", updateUsers);
+      // 先关 socket 再 destroy：destroy() 内部会先把本地 awareness 置空再触发一次
+      // 全量广播，时序上可能被服务端按“空名单”记账，导致断开时不再广播移除。
+      // 先主动断线，服务端按该连接的完整 clientID 名单立即广播离开，全员秒级回落。
+      // 已知边界：同一浏览器双标签进同一房间时（共享 IndexedDB/BroadcastChannel），
+      // y-websocket 的 awareness 归属可能错位，离开要等 ~30s 过期兜底——跨设备无此现象。
+      try {
+        provider.ws?.close();
+      } catch {
+        /* socket 可能已不在 */
+      }
       persistence?.destroy();
       provider.destroy();
       doc.destroy();

@@ -32,9 +32,25 @@ export function RoomHeader({
     setEditing(false);
   };
 
-  const copyRoomCode = () => {
-    navigator.clipboard.writeText(roomCode);
-    alert("房间代码已复制到剪贴板");
+  const copyRoomCode = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(roomCode);
+      } else {
+        // 非安全上下文（http://IP 直连）无 Async Clipboard：execCommand 降级
+        const ta = document.createElement("textarea");
+        ta.value = roomCode;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      alert("房间代码已复制到剪贴板");
+    } catch {
+      alert(`复制失败，请手动复制房间代码：${roomCode}`);
+    }
   };
 
   return (
