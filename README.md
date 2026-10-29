@@ -27,12 +27,14 @@
 coordination—v2/
 ├── app/                      # Next.js App Router
 │   ├── page.tsx             # 首页（创建/加入房间）
-│   ├── editor/page.tsx      # 编辑器页（query 参数 ?code=&name=）
+│   ├── editor/              # 编辑器页（page 编排 + RoomHeader/UsersPanel/editorConfig）
 │   ├── layout.tsx           # 根布局（强制浅色主题）
 │   └── globals.css          # Tailwind v4 入口 + 主题变量
 ├── lib/
 │   ├── useCollaboration.ts  # Yjs + y-websocket 协同 Hook
-│   └── storage.ts           # localStorage 工具（用户名/最近房间）
+│   ├── storage.ts           # localStorage 工具（用户名/最近房间）
+│   ├── serverBase.ts        # 服务地址解析（环境变量 → 同源回退）
+│   └── roomCode.ts          # 房间码生成 / 相对时间纯函数
 ├── types/                    # TypeScript 类型
 ├── server/                   # 协同 WebSocket 服务（独立 Node 进程）
 │   ├── index.js             # express + ws + y-websocket + multer
