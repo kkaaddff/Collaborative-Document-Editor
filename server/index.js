@@ -106,9 +106,21 @@ app.get('/health', (_req, res) => {
 const staticDir = process.env.STATIC_DIR || path.join(__dirname, 'public');
 if (fs.existsSync(staticDir)) {
   app.use(express.static(staticDir));
-  // 客户端路由兜底：非 API 的 GET 回到 index.html / 404.html
+  // 客户端路由兜底，对齐 nginx 的 try_files $uri $uri.html $uri/ /index.html：
+  // Next 静态导出把无扩展名路由生成为 <route>.html（如 editor.html），
+  // 必须先命中它，否则 /editor 会错误地回落到首页 index.html
   app.use((req, res, next) => {
     if (req.method !== 'GET' || req.path.startsWith('/uploads')) return next();
+    const routePath = path.posix.normalize(req.path).replace(/\/+$/, '') || '/';
+    if (routePath !== '/') {
+      const candidate = path.join(staticDir, `${routePath}.html`);
+      const staysInside = !path
+        .relative(staticDir, candidate)
+        .startsWith('..');
+      if (staysInside && fs.existsSync(candidate)) {
+        return res.sendFile(candidate);
+      }
+    }
     res.sendFile(path.join(staticDir, 'index.html'));
   });
 }
