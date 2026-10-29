@@ -78,7 +78,7 @@ npm run android:dev          # 真机/模拟器调试
 
 ```
  Tauri 桌面 (dmg/nsis/AppImage+deb)   托盘最近房间 · IndexedDB 离线缓存
- Tauri Android (apk/aab)              扫码进房 · ws://IP:PORT 直连（cleartext）
+ Tauri Android (arm64 apk)           扫码进房 · ws://IP:PORT 直连（cleartext）
  Web (Vite → dist/)                   同一 SPA；默认同源，?server= 可覆盖
         │  同一套 client/src（platform/ 收敛平台差异）
         ▼
@@ -120,7 +120,7 @@ npm run android:dev          # 真机/模拟器调试
 | desktop | macos-latest | `desktop-dmg-aarch64`（`*.dmg`，仅 Apple Silicon） |
 | desktop | windows-latest | `desktop-nsis-x64`（NSIS `*-setup.exe`，未签名） |
 | desktop | ubuntu-latest | `desktop-linux-x64`（`*.AppImage` + `*.deb`） |
-| android | ubuntu-latest | `android-apk`（按 abi 拆分）+ `android-aab`（debug 签名） |
+| android | ubuntu-latest | `android-apk`（单包 arm64-v8a，debug 签名） |
 
 > 未配置签名/公证证书：mac dmg 首次打开需右键→打开；win 会弹 SmartScreen；apk 为 debug 签名可直接侧载。正式签名后续用 repo Secrets 接入。
 

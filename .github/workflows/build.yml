@@ -182,7 +182,7 @@ jobs:
           path: ${{ matrix.artifact-path }}
           if-no-files-found: error
 
-  # ---------- Android（apk 按 abi 拆分 + aab；v1 debug 签名可直接装机） ----------
+  # ---------- Android（仅 arm64 单 apk：最新 Android 设备均为 arm64-v8a；v1 debug 签名可直接装机） ----------
   android:
     runs-on: ubuntu-latest
     steps:
@@ -214,7 +214,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          targets: aarch64-linux-android
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -232,20 +232,14 @@ jobs:
           npx tauri android init
           node scripts/android-patch.mjs
 
-      - name: 构建 apk（按 abi 拆分）+ aab
+      - name: 构建 apk（仅 arm64）
         working-directory: client
-        run: npx tauri android build --apk --split-per-abi --aab --debug
+        run: npx tauri android build --apk --target aarch64 --debug
 
       - uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: client/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
-          if-no-files-found: error
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: android-aab
-          path: client/src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
           if-no-files-found: error
 
       - name: 计算 Release 标签
@@ -257,7 +251,7 @@ jobs:
             echo "RELEASE_TAG=v$(node -p "require('./client/src-tauri/tauri.conf.json').version")" >> "$GITHUB_ENV"
           fi
 
-      - name: 挂 apk/aab 到 Release
+      - name: 挂 apk 到 Release
         if: ${{ env.RELEASE_TAG != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -267,5 +261,4 @@ jobs:
             --target "$GITHUB_SHA" --notes "CI 自动构建（run ${{ github.run_number }}）" || true
           gh release upload "$RELEASE_TAG" \
             client/src-tauri/gen/android/app/build/outputs/apk/**/*.apk \
-            client/src-tauri/gen/android/app/build/outputs/bundle/**/*.aab \
             --clobber

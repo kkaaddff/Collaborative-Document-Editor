@@ -7,7 +7,7 @@ metadata:
 
 # v3 跨端构建事实（2026-10-29，P0–P6 落地）
 
-- **出包一律走 `.github/workflows/build.yml`**（web/desktop×3/android 矩阵；手动触发或推 `v*` tag）。用户明确要求打包流全在 Actions；**不要 Intel mac 包**（用户明确说 macOS Intel 不需要，只出 aarch64 dmg）。手动触发默认创建 Release（tag=v+版本号）并挂全产物。2026-10-29 流水线全绿（run 40818623679）。
+- **出包一律走 `.github/workflows/build.yml`**（web/desktop×3/android 矩阵；手动触发或推 `v*` tag）。用户明确要求打包流全在 Actions。**产物范围按用户要求裁剪**：不要 Intel mac 包（只出 aarch64 dmg）；android 只出 arm64 单 apk（不拆 abi、不出 aab）。手动触发默认创建 Release（tag=v+版本号）并挂全产物。2026-10-29 流水线全绿（run 40818623679）。
 - **tauri-action 手动触发不上传**：无 tagName 时它 skip all uploads——桌面产物必须显式 `actions/upload-artifact`（已在 desktop job 里做，路径写在矩阵 artifact-path）。
 - **Rust 托盘/菜单代码必须 `#[cfg(desktop)]` 门控**：tauri 的 `menu`/`tray` 模块与 `WebviewWindow::unminimize` 桌面专属，android 交叉编译报 E0432/E0599（lib.rs 已门控；前端用 `isDesktopTauri()` 区分）。
 - **本机（admin 的 mac）没有 Rust/cargo**——`tauri dev`、`tauri build`、`tauri android init` 本地都跑不了；这些只在 CI 或用户装 rustup 后可用。本地验证 = `client/` tsc + eslint + vite build + `server/convergence-smoke.mjs`。
