@@ -1,10 +1,10 @@
-// 扫码弹层：全屏取景 + rAF 循环 jsQR 解码；识别即回调并自动关闭。
-// Android App 场景由 platform/scanQr 的原生插件分支接管（P5）。
+// 扫码弹层：Android App 走原生插件全屏扫码；其余环境 jsQR + getUserMedia rAF 解码。
 import { useEffect, useRef, useState } from "react";
 import {
   decodeVideoFrame,
   getCameraStream,
   hasNativeScanner,
+  nativeScanQr,
   stopStream,
 } from "@/platform/scanQr";
 
@@ -16,8 +16,30 @@ interface ScanModalProps {
 export function ScanModal({ onResult, onClose }: ScanModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState("");
+  const [waitingNative] = useState(hasNativeScanner());
 
+  // 原生分支：插件自带全屏取景，这里只等结果（取消返回 null）
   useEffect(() => {
+    if (!waitingNative) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const text = await nativeScanQr();
+        if (cancelled) return;
+        if (text) onResult(text);
+        else onClose();
+      } catch {
+        if (!cancelled) onClose();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [waitingNative, onResult, onClose]);
+
+  // 网页分支：video 取景 + rAF 循环解码
+  useEffect(() => {
+    if (waitingNative) return;
     let stream: MediaStream | null = null;
     let raf = 0;
     let cancelled = false;
@@ -53,7 +75,7 @@ export function ScanModal({ onResult, onClose }: ScanModalProps) {
       cancelAnimationFrame(raf);
       stopStream(stream);
     };
-  }, [onResult]);
+  }, [waitingNative, onResult]);
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
@@ -69,6 +91,16 @@ export function ScanModal({ onResult, onClose }: ScanModalProps) {
             className="px-6 py-2 rounded-lg bg-white text-gray-900 text-sm font-medium"
           >
             知道了
+          </button>
+        </div>
+      ) : waitingNative ? (
+        <div className="text-center space-y-4">
+          <p className="text-white text-sm">正在调起原生扫码...</p>
+          <button
+            onClick={onClose}
+            className="px-8 py-2 rounded-lg bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
+          >
+            取消
           </button>
         </div>
       ) : (
@@ -89,11 +121,6 @@ export function ScanModal({ onResult, onClose }: ScanModalProps) {
             取消
           </button>
         </>
-      )}
-      {hasNativeScanner() && (
-        <p className="text-gray-500 text-xs mt-4">
-          （检测到 App 环境：原生扫码将在 P5 接入，当前使用摄像头方案）
-        </p>
       )}
     </div>
   );

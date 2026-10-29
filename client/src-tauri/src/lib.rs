@@ -78,7 +78,13 @@ fn set_recent_rooms(app: AppHandle, rooms: Vec<RecentRoom>) -> Result<(), String
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default();
+    // 扫码插件仅移动端注册（依赖按 target 门控，见 Cargo.toml）
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        builder = builder.plugin(tauri_plugin_barcode_scanner::init());
+    }
+    builder
         .setup(|app| {
             let handle = app.handle().clone();
             let menu = build_menu(&handle, &[])?;

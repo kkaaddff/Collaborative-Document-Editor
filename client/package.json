@@ -7,11 +7,16 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "lint": "eslint"
+    "lint": "eslint",
+    "tauri": "tauri",
+    "android:init": "tauri android init && node scripts/android-patch.mjs",
+    "android:dev": "tauri android dev",
+    "android:build": "tauri android build"
   },
   "dependencies": {
     "@mdxeditor/editor": "^3.48.0",
     "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-barcode-scanner": "^2.5.3",
     "jsqr": "^1.4.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.0",

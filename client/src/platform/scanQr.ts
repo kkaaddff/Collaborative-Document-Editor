@@ -9,6 +9,15 @@ export function hasNativeScanner(): boolean {
   return isTauri() && /android/i.test(navigator.userAgent);
 }
 
+/** 原生全屏扫码（插件，仅移动端编入）；取消返回 null，识别返回内容字符串。 */
+export async function nativeScanQr(): Promise<string | null> {
+  const { scan, Format } = await import(
+    "@tauri-apps/plugin-barcode-scanner"
+  );
+  const result = await scan({ formats: [Format.QRCode], windowed: false });
+  return result?.content ?? null;
+}
+
 export async function getCameraStream(): Promise<MediaStream> {
   if (!navigator.mediaDevices?.getUserMedia) {
     throw new Error("当前环境不支持摄像头（需 HTTPS 或 App）");
