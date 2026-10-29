@@ -38,8 +38,11 @@ jobs:
 
       - name: 安装依赖并构建
         working-directory: client
+        # npm install 而非 ci：npm 会把 optional 平台原生包按「生成 lockfile 的平台」裁剪，
+        # 单平台 lockfile 在其它平台 npm ci 必缺 @rollup/*-gnu/msvc（npm/cli#4828）；
+        # install 完整遵循既有锁定版本，仅补当前平台缺失项
         run: |
-          npm ci --no-audit --no-fund
+          npm install --no-audit --no-fund
           npm run build
           # 半残安装兜底：本地 tsc/vite 必须存在（防 PATH 落到系统旧/新工具）
           test -x node_modules/.bin/tsc && test -x node_modules/.bin/vite
@@ -115,7 +118,7 @@ jobs:
       - name: 安装前端依赖
         working-directory: client
         run: |
-          npm ci --no-audit --no-fund
+          npm install --no-audit --no-fund   # 同上：补齐本平台 optional 原生包
           test -x node_modules/.bin/tauri
 
       - uses: tauri-apps/tauri-action@v0
@@ -147,8 +150,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - uses: android-actions/setup-android@v3
-
+      # runner 预装 Android SDK/许可；setup-android@v3 反而会因废弃的 tools 包挂掉，不引入
       - name: 确保 NDK 可用并导出 NDK_HOME
         run: |
           if [ -z "${NDK_HOME:-}" ] && ls "$ANDROID_HOME"/ndk/* >/dev/null 2>&1; then
@@ -172,7 +174,7 @@ jobs:
       - name: 安装前端依赖
         working-directory: client
         run: |
-          npm ci --no-audit --no-fund
+          npm install --no-audit --no-fund   # 同上：补齐本平台 optional 原生包
           test -x node_modules/.bin/tauri
 
       - name: 生成 Android 工程（gen/android 不入库）

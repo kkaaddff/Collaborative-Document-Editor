@@ -92,7 +92,6 @@ pub fn run() {
                 .icon(handle.default_window_icon().unwrap().clone())
                 .tooltip("协同文档编辑器")
                 .menu(&menu)
-                .show()
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "new" => {
                         let _ = app.emit("tray://new-room", ());
