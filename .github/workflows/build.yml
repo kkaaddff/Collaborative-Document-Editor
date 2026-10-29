@@ -1,5 +1,6 @@
 # 全产物构建流水线：一次触发出 Web + 三平台桌面 + Android。
-# 触发：手动 workflow_dispatch（可选勾选部署 Web 到生产）/ 推 v* tag（桌面产物自动挂 Draft Release）。
+# 触发：手动 workflow_dispatch（默认创建 GitHub Release 挂全产物，可勾选部署 Web）/ 推 v* tag。
+# Release 标签：推 tag 时用 tag 名；手动触发用 v+tauri.conf.json 版本号（重复触发同版本会覆盖同名附件）。
 # 说明：本机无需 Rust/JDK——本地只跑 tsc/eslint/vite build 与收敛冒烟，出包一律走这里。
 name: build
 
@@ -10,6 +11,10 @@ on:
         description: "同时部署 Web 到生产服务器（需 SSH_PRIVATE_KEY secret）"
         type: boolean
         default: false
+      release:
+        description: "创建 GitHub Release 并挂全产物（tag = v+版本号）"
+        type: boolean
+        default: true
   push:
     tags: ["v*"]
 
@@ -55,6 +60,25 @@ jobs:
           name: web-dist
           path: client/web-dist.zip
           if-no-files-found: error
+
+      # Release 标签三处同源：tag 触发用 tag 名；手动勾选 release 用 v+版本号
+      - name: 计算 Release 标签
+        if: ${{ startsWith(github.ref, 'refs/tags/') || inputs.release == true }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "RELEASE_TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          else
+            echo "RELEASE_TAG=v$(node -p "require('./client/src-tauri/tauri.conf.json').version")" >> "$GITHUB_ENV"
+          fi
+
+      - name: 挂 web-dist 到 Release
+        if: ${{ env.RELEASE_TAG != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$RELEASE_TAG" --title "Coordination $RELEASE_TAG" \
+            --target "$GITHUB_SHA" --notes "CI 自动构建（run ${{ github.run_number }}）" || true
+          gh release upload "$RELEASE_TAG" client/web-dist.zip --clobber
 
       - name: 配置 SSH 密钥
         if: ${{ inputs.deploy == true }}
@@ -131,17 +155,28 @@ jobs:
           npm install --no-audit --no-fund   # 同上：补齐本平台 optional 原生包
           test -x node_modules/.bin/tauri
 
+      - name: 计算 Release 标签
+        if: ${{ startsWith(github.ref, 'refs/tags/') || inputs.release == true }}
+        shell: bash # windows 默认 pwsh，统一 bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "RELEASE_TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          else
+            echo "RELEASE_TAG=v$(node -p "require('./client/src-tauri/tauri.conf.json').version")" >> "$GITHUB_ENV"
+          fi
+
+      # tauri-action 负责桌面产物挂 Release；无 RELEASE_TAG 时传空 = 跳过上传（由上面的
+      # upload-artifact 兜底）。它会自建缺失的 Release，与 web/android 的 gh release create 并发安全
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: client
           args: ${{ matrix.args }}
-          # 仅 tag 触发时建 Release（Draft）挂产物；手动触发时 tauri-action 会
-          # "No releaseId or tagName provided, skipping all uploads"，靠下面显式上传
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          releaseName: "Coordination ${{ github.ref_name }}"
-          releaseDraft: true
+          tagName: ${{ env.RELEASE_TAG || '' }}
+          releaseName: "Coordination ${{ env.RELEASE_TAG || github.ref_name }}"
+          releaseBody: "CI 自动构建（run ${{ github.run_number }}）"
+          releaseDraft: false
           prerelease: false
 
       # 手动触发也必须能下载产物（用户要求：触发即出全套可取回）
@@ -217,3 +252,25 @@ jobs:
           name: android-aab
           path: client/src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
           if-no-files-found: error
+
+      - name: 计算 Release 标签
+        if: ${{ startsWith(github.ref, 'refs/tags/') || inputs.release == true }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "RELEASE_TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
+          else
+            echo "RELEASE_TAG=v$(node -p "require('./client/src-tauri/tauri.conf.json').version")" >> "$GITHUB_ENV"
+          fi
+
+      - name: 挂 apk/aab 到 Release
+        if: ${{ env.RELEASE_TAG != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s globstar nullglob # gh 不展开 glob，** 依赖 globstar
+          gh release create "$RELEASE_TAG" --title "Coordination $RELEASE_TAG" \
+            --target "$GITHUB_SHA" --notes "CI 自动构建（run ${{ github.run_number }}）" || true
+          gh release upload "$RELEASE_TAG" \
+            client/src-tauri/gen/android/app/build/outputs/apk/**/*.apk \
+            client/src-tauri/gen/android/app/build/outputs/bundle/**/*.aab \
+            --clobber

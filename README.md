@@ -111,8 +111,8 @@ npm run android:dev          # 真机/模拟器调试
 
 `.github/workflows/build.yml`，两种触发：
 
-- **手动**（workflow_dispatch）：全矩阵构建，产物在 workflow Artifacts；可勾选 `deploy` 同时部署 Web 到生产（需 repo Secret `SSH_PRIVATE_KEY`，走 `deploy/deploy.sh` 全链路）。
-- **推 `v*` tag**：同矩阵，桌面产物自动挂到 Draft Release。
+- **手动**（workflow_dispatch）：全矩阵构建，产物同时进 workflow Artifacts 与 **GitHub Release**（默认勾选 `release`，tag = `v` + `tauri.conf.json` 版本号，如 `v3.0.0`；重复触发同版本会覆盖同名附件，升版本改 `client/src-tauri/tauri.conf.json`）。可另勾选 `deploy` 同时部署 Web 到生产（需 repo Secret `SSH_PRIVATE_KEY`，走 `deploy/deploy.sh` 全链路）。
+- **推 `v*` tag**：同矩阵，Release 用 tag 名，全产物挂附件。
 
 | Job | Runner | Artifacts（run 页面下载） |
 |---|---|---|
