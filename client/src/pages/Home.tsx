@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import {
   getRecentRooms,
   removeRecentRoom,
@@ -22,6 +22,9 @@ export default function Home() {
   const [roomCode, setRoomCode] = useState("");
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
   const [onlineRooms, setOnlineRooms] = useState<OnlineRoom[]>([]);
+  // 服务器连通状态：null=探测中 true/false=健康检查结果；地址仅本组件生命周期内固定（设置页保存后返回会重挂载重读）
+  const [serverOk, setServerOk] = useState<boolean | null>(null);
+  const serverBase = useMemo(() => getServerBase(), []);
 
   const resolveName = () => {
     const n = userName.trim();
@@ -64,7 +67,7 @@ export default function Home() {
   const fetchOnline = useCallback(async () => {
     try {
       const res = await fetch(`${getServerBase()}/health`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const raw = (
         Array.isArray(data?.rooms) ? data.rooms : []
@@ -76,8 +79,10 @@ export default function Home() {
         }))
         .filter((r) => r.code);
       setOnlineRooms(rooms);
+      setServerOk(true);
     } catch {
-      /* 离线/服务不可达：静默降级 */
+      setServerOk(false);
+      /* 离线/服务不可达：在线列表静默降级，状态条负责提示 */
     }
   }, []);
 
@@ -114,7 +119,42 @@ export default function Home() {
           <p className="text-lg text-gray-600">
             实时协同编辑，支持多用户同时编写文档
           </p>
+          {/* 服务器直连状态：绿=已连 红=不可达 灰=探测中 */}
+          <div className="flex items-center justify-center gap-2 mt-4 text-sm">
+            <span
+              className={`inline-block w-2 h-2 rounded-full shrink-0 ${
+                serverOk === null
+                  ? "bg-gray-300"
+                  : serverOk
+                    ? "bg-green-500"
+                    : "bg-red-500"
+              }`}
+            />
+            <span className="text-gray-500 font-mono truncate max-w-xs">
+              {serverBase}
+            </span>
+            <Link
+              to="/settings"
+              className="text-blue-600 hover:text-blue-700 hover:underline shrink-0"
+            >
+              设置
+            </Link>
+          </div>
         </div>
+
+        {/* 服务器不可达时的直连引导（Web 跨源/App 未配置场景） */}
+        {serverOk === false && (
+          <div className="mb-6 rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-800">
+            无法连接协同服务器。若服务部署在其他地址，请
+            <Link
+              to="/settings"
+              className="font-semibold underline underline-offset-2"
+            >
+              前往设置
+            </Link>
+            配置直连地址（如 http://IP:端口）后使用。
+          </div>
+        )}
 
         {/* 主要内容卡片 */}
         <div className="bg-white rounded-2xl shadow-2xl p-8 space-y-8">

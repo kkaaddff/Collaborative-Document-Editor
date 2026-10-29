@@ -103,7 +103,8 @@ app.get('/health', (_req, res) => {
 
 // 静态前端（Next.js 静态导出产物），与 WS 同端口同源，
 // 适配 fnos connect 随机四级域名反代的场景
-const staticDir = process.env.STATIC_DIR || path.join(__dirname, 'public');
+// path.resolve：sendFile 要求绝对路径，避免 STATIC_DIR 传相对路径时 500
+const staticDir = path.resolve(process.env.STATIC_DIR || path.join(__dirname, 'public'));
 if (fs.existsSync(staticDir)) {
   app.use(express.static(staticDir));
   // 客户端路由兜底，对齐 nginx 的 try_files $uri $uri.html $uri/ /index.html：

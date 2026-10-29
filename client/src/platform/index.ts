@@ -1,0 +1,7 @@
+// 平台能力封装：Tauri 与 Web 的差异全部收敛到这个目录。
+// P2 仅做环境探测（黄条引导强度、后续 store/scan/tray 按此分流）；
+// plugin-store 持久化、扫码、托盘分别在 P3/P4/P5 接入。
+
+export function isTauri(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
