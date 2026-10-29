@@ -9,42 +9,21 @@ import {
   useLocalStorageState,
   USERNAME_KEY,
 } from "@/lib/storage";
+import { generateRoomCode, formatRelative } from "@/lib/roomCode";
 import { getServerBase } from "@/lib/serverBase";
 import type { RecentRoom } from "@/types";
 
 type OnlineRoom = { code: string; userCount: number };
 
-// 相对时间格式化（中文，简版）
-function formatRelative(ts: number): string {
-  const diff = Date.now() - ts;
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return "刚刚";
-  if (min < 60) return `${min} 分钟前`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} 小时前`;
-  const day = Math.floor(hr / 24);
-  return `${day} 天前`;
-}
-
 export default function Home() {
   const router = useRouter();
 
-  // 用户名：localStorage 持久化、双面板共用、预填
+  // 用户名：localStorage 持久化、创建/加入共用、预填
   const [userName, setUserName] = useLocalStorageState<string>(USERNAME_KEY, "");
 
   const [roomCode, setRoomCode] = useState("");
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
   const [onlineRooms, setOnlineRooms] = useState<OnlineRoom[]>([]);
-
-  // 生成随机房间代码
-  const generateRoomCode = () => {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let code = "";
-    for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-  };
 
   const resolveName = () => {
     const n = userName.trim();
@@ -144,6 +123,25 @@ export default function Home() {
 
         {/* 主要内容卡片 */}
         <div className="bg-white rounded-2xl shadow-2xl p-8 space-y-8">
+          {/* 用户名：创建/加入共用 */}
+          <div>
+            <label
+              htmlFor="userName"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              用户名
+            </label>
+            <input
+              type="text"
+              id="userName"
+              value={userName}
+              onChange={(e) => setUserName(e.target.value)}
+              placeholder="输入您的用户名（下次自动带出）"
+              maxLength={20}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+          </div>
+
           {/* 创建新文档 */}
           <div className="border-b border-gray-200 pb-8">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
@@ -152,24 +150,6 @@ export default function Home() {
             <p className="text-gray-600 mb-6">
               快速创建一个新的协同文档，系统会自动生成房间代码
             </p>
-
-            <div className="mb-4">
-              <label
-                htmlFor="createUserName"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                用户名
-              </label>
-              <input
-                type="text"
-                id="createUserName"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                placeholder="输入您的用户名（下次自动带出）"
-                maxLength={20}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
-            </div>
 
             <button
               onClick={handleCreateNew}
@@ -202,24 +182,6 @@ export default function Home() {
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                   placeholder="输入 8 位房间代码"
                   maxLength={8}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="userName"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  用户名
-                </label>
-                <input
-                  type="text"
-                  id="userName"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  placeholder="输入您的用户名（下次自动带出）"
-                  maxLength={20}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
               </div>

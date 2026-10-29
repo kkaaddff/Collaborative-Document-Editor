@@ -11,36 +11,14 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import type { MDXEditorMethods } from "@mdxeditor/editor";
 import { MDXEditor } from "@mdxeditor/editor";
-import {
-  headingsPlugin,
-  listsPlugin,
-  linkPlugin,
-  linkDialogPlugin,
-  quotePlugin,
-  tablePlugin,
-  codeBlockPlugin,
-  markdownShortcutPlugin,
-  toolbarPlugin,
-  thematicBreakPlugin,
-  frontmatterPlugin,
-  imagePlugin,
-  UndoRedo,
-  BoldItalicUnderlineToggles,
-  InsertTable,
-  InsertImage,
-  InsertCodeBlock,
-  InsertFrontmatter,
-  InsertThematicBreak,
-  CodeToggle,
-  CreateLink,
-  ListsToggle,
-  BlockTypeSelect,
-} from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
 import "@/lib/fixTableCopy"; // 修复表格无法拷贝（给 TableNode 补 exportDOM）
 import { useCollaboration } from "@/lib/useCollaboration";
 import { getServerBase } from "@/lib/serverBase";
 import { upsertRecentRoom } from "@/lib/storage";
+import { createEditorPlugins } from "./editorConfig";
+import { RoomHeader } from "./RoomHeader";
+import { UsersPanel } from "./UsersPanel";
 import { User } from "@/types";
 
 function EditorPageContent() {
@@ -56,13 +34,10 @@ function EditorPageContent() {
     () => `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   );
 
-  // 确保只在客户端渲染，避免 hydration mismatch
-  // MDXEditor 根据操作系统检测快捷键（Ctrl vs ⌘），
-  // 在服务器端和客户端可能不一致，导致 hydration mismatch
+  // 确保只在客户端渲染，避免 hydration mismatch：
+  // MDXEditor 根据操作系统检测快捷键（Ctrl vs ⌘），服务端与客户端可能不一致
   const [mounted, setMounted] = useState(false);
-
   useEffect(() => {
-    // 必须在客户端挂载后才渲染编辑器（避免 hydration mismatch）
     setMounted(true);
   }, []);
 
@@ -75,8 +50,6 @@ function EditorPageContent() {
   const [content, setContent] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [roomName, setRoomName] = useState("");
-  const [editingName, setEditingName] = useState(false);
-  const [nameDraft, setNameDraft] = useState("");
   const editorRef = useRef<MDXEditorMethods | null>(null);
   const isUpdatingFromRemote = useRef(false);
   const contentRef = useRef<string>("");
@@ -114,21 +87,6 @@ function EditorPageContent() {
       upsertRecentRoom({ code: roomCode, name: roomName });
     }
   }, [roomCode, roomName]);
-
-  const startRename = () => {
-    setNameDraft(roomName);
-    setEditingName(true);
-  };
-  const commitRename = () => {
-    const next = nameDraft.trim();
-    if (next) {
-      renameRoom(next);
-    }
-    setEditingName(false);
-  };
-  const cancelRename = () => {
-    setEditingName(false);
-  };
 
   const handleContentChange = useCallback(
     (markdown: string, initialMarkdownNormalize: boolean) => {
@@ -169,17 +127,11 @@ function EditorPageContent() {
     }
   }, []);
 
-  const handleLeaveRoom = () => {
-    router.push("/");
-  };
-
-  const handleCopyRoomCode = () => {
-    if (!roomCode) {
-      return;
-    }
-    navigator.clipboard.writeText(roomCode);
-    alert("房间代码已复制到剪贴板");
-  };
+  // 插件数组只在 upload handler 变化时重建（handler 已 useCallback，实际稳定）
+  const plugins = useMemo(
+    () => createEditorPlugins(handleImageUpload),
+    [handleImageUpload]
+  );
 
   if (!roomCode) {
     return null;
@@ -187,76 +139,13 @@ function EditorPageContent() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            协同编辑器
-          </h1>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              房间:
-            </span>
-            {editingName ? (
-              <input
-                autoFocus
-                type="text"
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    commitRename();
-                  } else if (e.key === "Escape") {
-                    e.preventDefault();
-                    cancelRename();
-                  }
-                }}
-                onBlur={commitRename}
-                maxLength={40}
-                placeholder="输入房间名"
-                className="px-2 py-1 rounded text-sm border border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 max-w-[12rem]"
-              />
-            ) : (
-              <button
-                onClick={startRename}
-                title="点击重命名房间"
-                className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[12rem]"
-              >
-                {roomName || "未命名文档"}
-              </button>
-            )}
-            <code className="bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded text-sm font-mono text-gray-900 dark:text-white">
-              {roomCode}
-            </code>
-            <button
-              onClick={handleCopyRoomCode}
-              className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors"
-            >
-              复制
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <div
-              className={`w-2 h-2 rounded-full ${
-                isConnected ? "bg-green-500" : "bg-red-500"
-              }`}
-            />
-            <span className="text-sm text-gray-600 dark:text-gray-400">
-              {isConnected ? "已连接" : "未连接"}
-            </span>
-          </div>
-
-          <button
-            onClick={handleLeaveRoom}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            退出房间
-          </button>
-        </div>
-      </div>
+      <RoomHeader
+        roomCode={roomCode}
+        roomName={roomName}
+        isConnected={isConnected}
+        onRename={renameRoom}
+        onLeave={() => router.push("/")}
+      />
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 px-6 py-4">
@@ -281,38 +170,7 @@ function EditorPageContent() {
                   ref={editorRef}
                   markdown={content}
                   onChange={handleContentChange}
-                  plugins={[
-                    headingsPlugin(),
-                    listsPlugin(),
-                    linkPlugin(),
-                    linkDialogPlugin(),
-                    quotePlugin(),
-                    tablePlugin(),
-                    codeBlockPlugin(),
-                    thematicBreakPlugin(),
-                    frontmatterPlugin(),
-                    imagePlugin({
-                      imageUploadHandler: handleImageUpload,
-                    }),
-                    markdownShortcutPlugin(),
-                    toolbarPlugin({
-                      toolbarContents: () => (
-                        <>
-                          <UndoRedo />
-                          <BoldItalicUnderlineToggles />
-                          <BlockTypeSelect />
-                          <InsertTable />
-                          <InsertImage />
-                          <InsertCodeBlock />
-                          <InsertFrontmatter />
-                          <InsertThematicBreak />
-                          <CodeToggle />
-                          <CreateLink />
-                          <ListsToggle />
-                        </>
-                      ),
-                    }),
-                  ]}
+                  plugins={plugins}
                   contentEditableClassName="focus:outline-none min-h-[400px] p-4 text-gray-900 dark:text-gray-100"
                   className="h-full dark:[&_.mdx-editor-toolbar]:bg-gray-800 [&_.mdx-editor-toolbar]:bg-white"
                   spellCheck={true}
@@ -326,30 +184,7 @@ function EditorPageContent() {
           </div>
         </div>
 
-        <div className="w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-6 overflow-y-auto">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            在线用户 ({users.length})
-          </h2>
-
-          <div className="space-y-3">
-            {users.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center space-x-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
-              >
-                <div
-                  className="w-3 h-3 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: user.color || "#999" }}
-                />
-                <div>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {user.name}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <UsersPanel users={users} />
       </div>
     </div>
   );
