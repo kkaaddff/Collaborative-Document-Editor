@@ -5,36 +5,40 @@ This document collects the guardrails for anyone running autonomous or semi-auto
 ## Core Repository Guidance
 
 ### Project Structure & Module Organization
-- The Next.js client lives under `app/`. `app/editor/` powers the collaborative editor, `layout.tsx` supplies the shell, and `globals.css` configures Tailwind defaults.
-- Shared utilities and client-side collaboration hooks sit in `lib/`, while reusable TypeScript definitions belong in `types/`.
-- Real-time state is managed by the standalone Node service in `server/index.js` (express + `ws` + `y-websocket` server + multer for image uploads). Collaboration is CRDT-based (Yjs) relayed over y-websocket — there is no Socket.IO or OT layer.
-- Static assets stay in `public/`; client utilities live in `lib/` (`useCollaboration.ts` for the Yjs provider, `storage.ts` for localStorage persistence).
+- v3 is a cross-platform CS architecture. The client lives under `client/`: Vite + React 19 + React Router (`src/pages/`, `src/components/`, `src/lib/`, `src/types/`), with `src/platform/` as the single place where Tauri/Web differences are resolved (`isTauri`, `scanQr`, `tray`).
+- `client/src-tauri/` is the Tauri 2 shell (Rust: tray menu, target-gated barcode plugin; icons; capabilities). `client/src-tauri/gen/` is generated and never committed; `client/scripts/android-patch.mjs` post-processes the generated Android manifest (cleartext + CAMERA + INTERNET).
+- Real-time state is managed by the standalone Node service in `server/index.js` (express + `ws` + `y-websocket` server + multer for image uploads, CORS enabled for direct-IP clients). Collaboration is CRDT-based (Yjs) relayed over y-websocket — there is no Socket.IO or OT layer.
+- Server address is resolved at RUNTIME by `client/src/lib/serverConfig.ts` (`?server=` param > saved config > `VITE_SERVER_URL` dev-only > same-origin). Never inline server addresses at build time.
+- QR payloads are Web URLs (`<server>/join?code=&server=`) consumed by `/join` — any phone camera works as a fallback; in-app scanning goes through `platform/scanQr.ts` (native plugin on Android, jsQR+getUserMedia elsewhere).
+- Packaging runs entirely on GitHub Actions (`.github/workflows/build.yml`: web, desktop mac/win/linux, android). Local machines need no Rust/JDK — local work is `tsc`/`eslint`/`vite build` + convergence smoke only.
 - Deployment is internalized under `deploy/` (`config.sh`, `deploy.sh`, `remote-restart.sh`, `nginx/` site configs) driven by `npm run deploy`; `setup.sh` bootstraps local dev, `ecosystem.config.js` configures PM2, and `Dockerfile`/`docker-compose.yml` build the all-in-one image.
 
 ### Build, Test, and Development Commands
-- Install dependencies with `npm install` in both the repository root and `server/`.
-- Launch the UI via `npm run dev`, start the collaboration service with `npm run server`, or run both together through `npm run dev:all`.
-- Production is a static export (`output: "export"` → `out/`). Build locally and ship via `npm run deploy` (build → tar/scp upload → remote nginx + pm2 restart). There is no long-running Next.js server in production.
-- `npm run lint` enforces the root ESLint rules, while `npm run health` runs the health check against the PM2 ecosystem.
+- Install dependencies with `npm install` in `client/` and `server/` (root package.json is an orchestrator only; `setup.sh` does both).
+- Launch the UI via `npm run dev` (Vite :5173), start the collaboration service with `npm run server` (:3001), or run both together through `npm run dev:all`.
+- Production web build is `client/dist/` (Vite). Ship via `npm run deploy` (build → tar/scp upload → remote nginx + pm2 restart); desktop/android packages come from GitHub Actions, not local builds.
+- `npm run lint` / `npm run build` delegate to `client/` (tsc --noEmit + eslint + vite build); `npm run health` runs the health check against the PM2 ecosystem.
+- Tauri local dev (optional, needs Rust): `cd client && npx tauri dev`; Android: `npm run android:init` (init + manifest patch) then `npm run android:dev`.
 - Use the PM2 helpers (`npm run pm2:start`, `pm2:stop`, `pm2:restart`, `pm2:logs`) when operating in managed environments.
 
 ### Coding Style & Naming Conventions
-- Code in TypeScript and modern React. Respect the linting profile defined in `eslint.config.mjs` and keep indentation at two spaces.
+- Code in TypeScript and modern React. Respect the linting profile defined in `client/eslint.config.mjs` and keep indentation at two spaces.
 - Use PascalCase for components and route groups, camelCase for hooks (`useCollaboration.ts`) and utilities, and UPPER_SNAKE_CASE only for environment variables.
-- Keep Tailwind utility classes inline in JSX and reserve `globals.css` for design tokens.
-- Avoid mutating shared Yjs documents directly—go through the provider/hook in `lib/useCollaboration.ts` so CRDT updates are applied and broadcast correctly.
+- Keep Tailwind utility classes inline in JSX and reserve `index.css` for design tokens.
+- Avoid mutating shared Yjs documents directly—go through the provider/hook in `client/src/lib/useCollaboration.ts` so CRDT updates are applied and broadcast correctly; route all Tauri-specific APIs through `client/src/platform/` instead of importing `@tauri-apps/*` from pages/components.
+- The local checkout path must stay ASCII (`coordination-v2`): an em-dash path breaks Android Gradle builds.
 
 ### Testing Guidelines
-- Automated tests are not yet configured; add coverage alongside new features.
-- Place unit tests adjacent to source in `__tests__/` folders and document the runner you used in the PR.
-- For collaboration flows, script manual or automated multi-client scenarios against the y-websocket server (`npm run server`, two editor tabs with the same room code) and capture convergence checks.
-- Every change touching `lib/useCollaboration.ts` or the Yjs document model must include verification that concurrent edits converge without data loss.
+- Automated unit tests are not yet configured; add coverage alongside new features. Place them adjacent to source in `__tests__/` and document the runner in the PR.
+- Convergence smoke (`server/convergence-smoke.mjs`, start the server then run it) is REQUIRED after any change touching `useCollaboration.ts`, the Yjs document model, or the server relay: dual clients, 100 interleaved random-position inserts, deletion round, meta + awareness assertions. Note: interleaved inserts split text markers — assert by bracket counts, never substring matching.
+- For collaboration flows, also script manual multi-client scenarios against the y-websocket server (`npm run server`, two editor tabs with the same room code).
+- QR payload build/parse roundtrip is pure logic (`client/src/lib/qr.ts`) — verify with assertions after changes.
 
 ### Commit & Pull Request Guidelines
 - Write small, imperative commits (e.g., `Add socket timeout guard`) that focus on a single change set.
 - Reference related issues or tickets in the footer when applicable.
 - Pull requests need a concise summary, testing evidence (commands and scenarios), and screenshots or GIFs for UI adjustments.
-- Call out configuration or deployment impacts in a dedicated note and request reviews from both frontend and backend maintainers when changes span `app/` and `server/`.
+- Call out configuration or deployment impacts in a dedicated note and request reviews from both frontend and backend maintainers when changes span `client/` and `server/`.
 
 ## Agent Workflow & Tooling
 

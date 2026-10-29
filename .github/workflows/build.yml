@@ -1,0 +1,185 @@
+# 全产物构建流水线：一次触发出 Web + 三平台桌面 + Android。
+# 触发：手动 workflow_dispatch（可选勾选部署 Web 到生产）/ 推 v* tag（桌面产物自动挂 Draft Release）。
+# 说明：本机无需 Rust/JDK——本地只跑 tsc/eslint/vite build 与收敛冒烟，出包一律走这里。
+name: build
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "同时部署 Web 到生产服务器（需 SSH_PRIVATE_KEY secret）"
+        type: boolean
+        default: false
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # tag 触发时 tauri-action 需要创建 Release
+
+jobs:
+  # ---------- Web（Vite 静态产物；勾选 deploy 时走 deploy/ 链路上服务器） ----------
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: 安装依赖并构建
+        working-directory: client
+        run: |
+          npm ci
+          npm run build
+
+      - name: 打包 dist
+        run: cd client/dist && zip -r ../web-dist.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: client/web-dist.zip
+          if-no-files-found: error
+
+      - name: 配置 SSH 密钥
+        if: ${{ inputs.deploy == true }}
+        env:
+          SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "$SSH_KEY" ]; then
+            echo "::error::deploy 勾选了部署但缺少 SSH_PRIVATE_KEY secret"; exit 1
+          fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 112.124.21.6 >> ~/.ssh/known_hosts
+
+      - name: 部署到生产（deploy/deploy.sh 全链路）
+        if: ${{ inputs.deploy == true }}
+        run: bash deploy/deploy.sh
+
+  # ---------- 桌面三平台（tauri-action：产物上传；tag 触发时挂 Draft Release） ----------
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest # arm64 runner 原生出 aarch64 dmg
+            args: --target aarch64-apple-darwin --bundles dmg
+            rust-targets: aarch64-apple-darwin
+          - os: macos-latest # 交叉出 x86_64 dmg（Intel Mac）
+            args: --target x86_64-apple-darwin --bundles dmg
+            rust-targets: x86_64-apple-darwin
+          - os: windows-latest
+            args: --bundles nsis
+            rust-targets: ""
+          - os: ubuntu-latest # AppImage + deb（托盘需 ayatana 依赖）
+            args: --bundles appimage,deb
+            rust-targets: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: client/src-tauri
+
+      - name: 安装 Linux 系统依赖（webkit + 托盘 + 图标）
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: 安装前端依赖
+        working-directory: client
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: client
+          args: ${{ matrix.args }}
+          # 仅 tag 触发时建 Release（Draft），手动触发只出 workflow 产物
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: "Coordination ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+
+  # ---------- Android（apk 按 abi 拆分 + aab；v1 debug 签名可直接装机） ----------
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      - name: 确保 NDK 可用并导出 NDK_HOME
+        run: |
+          if [ -z "${NDK_HOME:-}" ] && ls "$ANDROID_HOME"/ndk/* >/dev/null 2>&1; then
+            NDK_DIR=$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)
+            echo "NDK_HOME=$NDK_DIR" >> "$GITHUB_ENV"
+            echo "使用预置 NDK: $NDK_DIR"
+          elif [ -z "${NDK_HOME:-}" ]; then
+            sdkmanager "ndk;27.0.12077973" >/dev/null
+            echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+            echo "已安装 NDK 27.0.12077973"
+          fi
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: client/src-tauri
+
+      - name: 安装前端依赖
+        working-directory: client
+        run: npm ci
+
+      - name: 生成 Android 工程（gen/android 不入库）
+        working-directory: client
+        run: |
+          npx tauri android init
+          node scripts/android-patch.mjs
+
+      - name: 构建 apk（按 abi 拆分）+ aab
+        working-directory: client
+        run: npx tauri android build --apk --split-per-abi --aab --debug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: client/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: client/src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
+          if-no-files-found: error

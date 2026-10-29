@@ -23,7 +23,7 @@ NGINX_CONF_DST="/opt/1panel/apps/openresty/openresty/conf/conf.d/docz.hengheng.o
 # 前端公网访问地址 (健康检查用)
 PUBLIC_WEB_URL="http://docz.hengheng.online"
 
-# 协同 WebSocket 公网地址 (前端构建时以 NEXT_PUBLIC_WS_URL 内联进静态产物)
+# 协同 WebSocket 公网地址 (v3 运行时配置：Web 同源回退，App/扫码可直连 IP:PORT)
 # 与前端同域名，直连 80 端口 (docz.hengheng.online.conf)：
 #   /ws 剥前缀转发到 :8101。y-websocket/浏览器把 http 自动当 ws。
 WS_PUBLIC_URL="http://docz.hengheng.online/ws"
