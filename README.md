@@ -1,15 +1,14 @@
 # 协同文档编辑器
 
-基于 Next.js 16 + Yjs 的实时协同富文本编辑器。多用户可同时编辑同一文档，变更实时同步；支持图片上传、房间码加入、在线用户与光标感知。
+基于 Next.js 16 + Yjs 的实时协同富文本编辑器。多用户可同时编辑同一文档，变更实时同步；支持图片上传、房间码加入、在线用户感知。
 
 ## ✨ 功能特性
 
 - ✅ **实时协同编辑**：基于 Yjs CRDT，多人并发编辑自动收敛、无冲突
 - ✅ **富文本编辑**：MDX 编辑器，支持加粗/斜体/下划线、列表、引用、表格、代码块、图片、链接等
 - ✅ **房间系统**：首页生成 8 位房间码，或凭码 + 用户名加入
-- ✅ **用户感知**：在线用户列表、实时光标位置
+- ✅ **用户感知**：在线用户列表（awareness）
 - ✅ **图片上传**：服务端 multer 接收，5MB 内、仅限常见图片格式
-- ✅ **客户端加密工具**：`lib/crypto.ts` 提供 AES 加解密（crypto-js）
 
 ## 🛠 技术栈
 
@@ -18,7 +17,6 @@
 | 前端 | Next.js 16（静态导出）· React 19 · TypeScript · Tailwind CSS v4 |
 | 编辑器 | `@mdxeditor/editor` |
 | 协同内核 | Yjs（CRDT）· `y-websocket`（客户端 provider） |
-| 加密 | crypto-js（AES，客户端） |
 | 服务端 | Node · express · ws · `y-websocket` 服务端 · multer（图片上传） |
 | 进程管理 | PM2 |
 | 静态托管 / 反向代理 | OpenResty（nginx） |
@@ -34,7 +32,7 @@ coordination—v2/
 │   └── globals.css          # Tailwind v4 入口 + 主题变量
 ├── lib/
 │   ├── useCollaboration.ts  # Yjs + y-websocket 协同 Hook
-│   └── crypto.ts            # AES 加解密工具
+│   └── storage.ts           # localStorage 工具（用户名/最近房间）
 ├── types/                    # TypeScript 类型
 ├── server/                   # 协同 WebSocket 服务（独立 Node 进程）
 │   ├── index.js             # express + ws + y-websocket + multer
@@ -44,7 +42,8 @@ coordination—v2/
 │   ├── config.sh            # 部署配置 —— 唯一真源
 │   ├── deploy.sh            # 本地入口：构建→上传→远端重启
 │   ├── remote-restart.sh    # 远端：npm ci + pm2 + nginx reload + 健康检查
-│   └── nginx/coordination.conf  # nginx 站点配置（含 try_files 修复）
+│   └── nginx/               # nginx 站点配置（docz.hengheng.online.conf 等）
+├── Dockerfile / docker-compose.yml  # all-in-one 镜像（前端静态 + WS 同端口）
 ├── ecosystem.config.js       # PM2 配置
 ├── health-check.js           # 健康检查脚本（dev）
 └── package.json
@@ -125,9 +124,9 @@ docker exec <openresty容器> openresty -s reload      # 改 nginx 后
 curl http://docz.hengheng.online/health
 ```
 
-### 离线打包（备选）
+### Docker all-in-one（备选）
 
-`bash build-release.sh` 产出 `dist/coordination-v2-*.zip`（含 `frontend/` + `server/` + 运维文件），供无法直连 scp 的环境手动部署。注意：zip 内不含 `.env.local`，消费者需自行设置 `NEXT_PUBLIC_WS_URL` 后再构建。
+`docker compose up -d --build` 单容器跑「前端静态 + 协同 WS」同端口（默认 9091），适配 fnos connect 等随机四级域名反代场景；上传图片挂载 `./data/uploads` 持久化。
 
 ## 🏗 架构说明
 
@@ -154,13 +153,12 @@ curl http://docz.hengheng.online/health
 
 - **创建文档**：首页点「创建新文档」→ 生成 8 位房间码 → 进入编辑器 → 把链接/房间码分享给他人。
 - **加入文档**：输入 8 位房间码与用户名 →「加入文档」。
-- **协同编辑**：编辑内容实时同步；右侧显示在线用户与光标；可粘贴/拖入或工具栏插入图片。
+- **协同编辑**：编辑内容实时同步；右侧显示在线用户；可粘贴/拖入或工具栏插入图片。
 
 ## 🔧 开发说明
 
 - 强制浅色主题：`app/layout.tsx` 给 `<html>` 设 `class="light"`，并在 `globals.css` 用 `@custom-variant dark` 把 dark 变体改为基于 `.dark` 类（永不触发）。
 - 服务端房间状态为内存存储（`server/index.js` 的 `roomStats`），重启后清空。
-- `lib/crypto.ts` 提供客户端 AES 工具，可按需在编辑器侧启用。
 
 ## 📄 许可证
 

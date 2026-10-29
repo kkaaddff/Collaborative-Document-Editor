@@ -8,13 +8,13 @@ This document collects the guardrails for anyone running autonomous or semi-auto
 - The Next.js client lives under `app/`. `app/editor/` powers the collaborative editor, `layout.tsx` supplies the shell, and `globals.css` configures Tailwind defaults.
 - Shared utilities and client-side collaboration hooks sit in `lib/`, while reusable TypeScript definitions belong in `types/`.
 - Real-time state is managed by the standalone Node service in `server/index.js` (express + `ws` + `y-websocket` server + multer for image uploads). Collaboration is CRDT-based (Yjs) relayed over y-websocket — there is no Socket.IO or OT layer.
-- Static assets stay in `public/`; client utilities live in `lib/` (`useCollaboration.ts` for the Yjs provider, `crypto.ts` for AES).
-- Deployment is internalized under `deploy/` (`config.sh`, `deploy.sh`, `remote-restart.sh`, `nginx/coordination.conf`) driven by `npm run deploy`; `setup.sh` bootstraps local dev, `ecosystem.config.js` configures PM2.
+- Static assets stay in `public/`; client utilities live in `lib/` (`useCollaboration.ts` for the Yjs provider, `storage.ts` for localStorage persistence).
+- Deployment is internalized under `deploy/` (`config.sh`, `deploy.sh`, `remote-restart.sh`, `nginx/` site configs) driven by `npm run deploy`; `setup.sh` bootstraps local dev, `ecosystem.config.js` configures PM2, and `Dockerfile`/`docker-compose.yml` build the all-in-one image.
 
 ### Build, Test, and Development Commands
 - Install dependencies with `npm install` in both the repository root and `server/`.
 - Launch the UI via `npm run dev`, start the collaboration service with `npm run server`, or run both together through `npm run dev:all`.
-- Production is a static export (`output: "export"` → `out/`). Build locally and ship via `npm run deploy` (build → rsync → remote nginx + pm2 restart). There is no long-running Next.js server in production.
+- Production is a static export (`output: "export"` → `out/`). Build locally and ship via `npm run deploy` (build → tar/scp upload → remote nginx + pm2 restart). There is no long-running Next.js server in production.
 - `npm run lint` enforces the root ESLint rules, while `npm run health` runs the health check against the PM2 ecosystem.
 - Use the PM2 helpers (`npm run pm2:start`, `pm2:stop`, `pm2:restart`, `pm2:logs`) when operating in managed environments.
 
@@ -22,7 +22,7 @@ This document collects the guardrails for anyone running autonomous or semi-auto
 - Code in TypeScript and modern React. Respect the linting profile defined in `eslint.config.mjs` and keep indentation at two spaces.
 - Use PascalCase for components and route groups, camelCase for hooks (`useCollaboration.ts`) and utilities, and UPPER_SNAKE_CASE only for environment variables.
 - Keep Tailwind utility classes inline in JSX and reserve `globals.css` for design tokens.
-- Avoid mutating shared Yjs documents directly—go through the provider/hook in `lib/useCollaboration.ts` so CRDT updates are applied and broadcast correctly; use `lib/crypto.ts` for any client-side AES.
+- Avoid mutating shared Yjs documents directly—go through the provider/hook in `lib/useCollaboration.ts` so CRDT updates are applied and broadcast correctly.
 
 ### Testing Guidelines
 - Automated tests are not yet configured; add coverage alongside new features.
