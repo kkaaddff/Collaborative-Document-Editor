@@ -16,6 +16,13 @@ on:
 permissions:
   contents: write # tag 触发时 tauri-action 需要创建 Release
 
+# CI 侧覆盖回官方源（env 优先级高于仓库 .npmrc）：npmmirror 从海外 runner 拉取不稳，
+# 曾致 npm ci 中途崩溃且退出码为 0 → 半残 node_modules。npm 的 replace-registry-host
+# 机制会把 lockfile 里的 npmmirror 地址重写为当前 registry，无需双份 lockfile。
+env:
+  NPM_CONFIG_REGISTRY: https://registry.npmjs.org
+  NPM_CONFIG_FETCH_RETRIES: "5"
+
 jobs:
   # ---------- Web（Vite 静态产物；勾选 deploy 时走 deploy/ 链路上服务器） ----------
   web:
@@ -32,8 +39,10 @@ jobs:
       - name: 安装依赖并构建
         working-directory: client
         run: |
-          npm ci
+          npm ci --no-audit --no-fund
           npm run build
+          # 半残安装兜底：本地 tsc/vite 必须存在（防 PATH 落到系统旧/新工具）
+          test -x node_modules/.bin/tsc && test -x node_modules/.bin/vite
 
       - name: 打包 dist
         run: cd client/dist && zip -r ../web-dist.zip .
@@ -105,7 +114,9 @@ jobs:
 
       - name: 安装前端依赖
         working-directory: client
-        run: npm ci
+        run: |
+          npm ci --no-audit --no-fund
+          test -x node_modules/.bin/tauri
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -160,7 +171,9 @@ jobs:
 
       - name: 安装前端依赖
         working-directory: client
-        run: npm ci
+        run: |
+          npm ci --no-audit --no-fund
+          test -x node_modules/.bin/tauri
 
       - name: 生成 Android 工程（gen/android 不入库）
         working-directory: client
