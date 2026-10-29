@@ -31,6 +31,7 @@ This document collects the guardrails for anyone running autonomous or semi-auto
 ### Testing Guidelines
 - Automated unit tests are not yet configured; add coverage alongside new features. Place them adjacent to source in `__tests__/` and document the runner in the PR.
 - Convergence smoke (`server/convergence-smoke.mjs`, start the server then run it) is REQUIRED after any change touching `useCollaboration.ts`, the Yjs document model, or the server relay: dual clients, 100 interleaved random-position inserts, deletion round, meta + awareness assertions. Note: interleaved inserts split text markers — assert by bracket counts, never substring matching.
+- E2E UI regression lives in `e2e/` (Playwright + system Chrome): run `cd e2e && npx playwright test` locally after touching `client/src/pages` or `client/src/components`, and add cases for new interactions. It is LOCAL-ONLY by design — never wire it into `.github/workflows/`; CI builds packages and nothing else. Two-user collaboration cases must use one browser context per user (same-context tabs skew y-websocket awareness attribution — see `e2e/README.md`).
 - For collaboration flows, also script manual multi-client scenarios against the y-websocket server (`npm run server`, two editor tabs with the same room code).
 - QR payload build/parse roundtrip is pure logic (`client/src/lib/qr.ts`) — verify with assertions after changes.
 
