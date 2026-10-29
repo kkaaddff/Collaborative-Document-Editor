@@ -103,16 +103,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-latest # arm64 runner 原生出 aarch64 dmg
+          - os: macos-latest # arm64 runner 原生出 aarch64 dmg（仅 Apple Silicon，不出 Intel）
             args: --target aarch64-apple-darwin --bundles dmg
             rust-targets: aarch64-apple-darwin
             artifact-name: desktop-dmg-aarch64
             artifact-path: client/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-          - os: macos-latest # 交叉出 x86_64 dmg（Intel Mac）
-            args: --target x86_64-apple-darwin --bundles dmg
-            rust-targets: x86_64-apple-darwin
-            artifact-name: desktop-dmg-x86_64
-            artifact-path: client/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
           - os: windows-latest
             args: --bundles nsis
             rust-targets: ""

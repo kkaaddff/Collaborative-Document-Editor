@@ -117,7 +117,7 @@ npm run android:dev          # 真机/模拟器调试
 | Job | Runner | Artifacts（run 页面下载） |
 |---|---|---|
 | web | ubuntu | `web-dist`（`web-dist.zip`，Vite 构建） |
-| desktop | macos-latest ×2 | `desktop-dmg-aarch64`、`desktop-dmg-x86_64`（`*.dmg`） |
+| desktop | macos-latest | `desktop-dmg-aarch64`（`*.dmg`，仅 Apple Silicon） |
 | desktop | windows-latest | `desktop-nsis-x64`（NSIS `*-setup.exe`，未签名） |
 | desktop | ubuntu-latest | `desktop-linux-x64`（`*.AppImage` + `*.deb`） |
 | android | ubuntu-latest | `android-apk`（按 abi 拆分）+ `android-aab`（debug 签名） |
