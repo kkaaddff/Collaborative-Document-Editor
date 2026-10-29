@@ -12,7 +12,7 @@ import { getServerBase, saveServer } from "@/lib/serverConfig";
 import { parseJoinPayload } from "@/lib/qr";
 import { QrModal } from "@/components/QrModal";
 import { ScanModal } from "@/components/ScanModal";
-import { isTauri } from "@/platform";
+import { isDesktopTauri } from "@/platform";
 import { onTrayAction, pushRecentRooms } from "@/platform/tray";
 import type { RecentRoom } from "@/types";
 
@@ -134,15 +134,15 @@ export default function Home() {
     setRecentRooms(getRecentRooms());
   };
 
-  // 桌面：最近房间 → 托盘菜单（菜单即达）
+  // 桌面：最近房间 → 托盘菜单（菜单即达；托盘为桌面专属能力）
   useEffect(() => {
-    if (!isTauri()) return;
+    if (!isDesktopTauri()) return;
     pushRecentRooms(recentRooms);
   }, [recentRooms]);
 
   // 桌面：托盘动作（新建/直达房间）→ 导航
   useEffect(() => {
-    if (!isTauri()) return;
+    if (!isDesktopTauri()) return;
     let disposed = false;
     let un: (() => void) | undefined;
     onTrayAction((action) => {

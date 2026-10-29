@@ -5,3 +5,8 @@
 export function isTauri(): boolean {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
+
+/** 桌面 App（托盘等桌面专属能力仅在桌面壳存在）。 */
+export function isDesktopTauri(): boolean {
+  return isTauri() && !/android|ios|iphone|ipad/i.test(navigator.userAgent);
+}

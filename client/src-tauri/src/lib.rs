@@ -1,7 +1,11 @@
 // 桌面主进程：托盘（最近房间直达 / 新建 / 显示 / 退出）+ WebView 主窗口。
 // 最近房间数据由前端（storage.ts）通过 set_recent_rooms 推过来重建菜单；
 // 菜单点击以事件发回前端导航（前端在 platform/tray.ts 订阅）。
+// 托盘/菜单是桌面专属能力：mobile 目标下 tauri::tray/menu 模块不存在，
+// 相关代码整体 cfg(desktop) 门控；移动端仅注册扫码插件。
+#[cfg(desktop)]
 use serde::{Deserialize, Serialize};
+#[cfg(desktop)]
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
@@ -9,16 +13,19 @@ use tauri::{
 };
 
 /// WebView 推来的最近房间（只取托盘需要的字段）
+#[cfg(desktop)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecentRoom {
     pub code: String,
     pub name: String,
 }
 
+#[cfg(desktop)]
 struct TrayState {
     tray: TrayIcon,
 }
 
+#[cfg(desktop)]
 fn build_menu(app: &AppHandle, rooms: &[RecentRoom]) -> tauri::Result<Menu<tauri::Wry>> {
     let menu = Menu::new(app)?;
     menu.append(&MenuItem::with_id(
@@ -57,6 +64,7 @@ fn build_menu(app: &AppHandle, rooms: &[RecentRoom]) -> tauri::Result<Menu<tauri
     Ok(menu)
 }
 
+#[cfg(desktop)]
 fn show_main(app: &AppHandle) {
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.show();
@@ -66,6 +74,7 @@ fn show_main(app: &AppHandle) {
 }
 
 /// 前端最近房间变化时调用：重建托盘菜单。
+#[cfg(desktop)]
 #[tauri::command]
 fn set_recent_rooms(app: AppHandle, rooms: Vec<RecentRoom>) -> Result<(), String> {
     let menu = build_menu(&app, &rooms).map_err(|e| e.to_string())?;
@@ -79,47 +88,55 @@ fn set_recent_rooms(app: AppHandle, rooms: Vec<RecentRoom>) -> Result<(), String
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let mut builder = tauri::Builder::default();
+
     // 扫码插件仅移动端注册（依赖按 target 门控，见 Cargo.toml）
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {
         builder = builder.plugin(tauri_plugin_barcode_scanner::init());
     }
+
+    // 托盘仅桌面
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .setup(|app| {
+                let handle = app.handle().clone();
+                let menu = build_menu(&handle, &[])?;
+                let tray = TrayIconBuilder::with_id("coordination-tray")
+                    .icon(handle.default_window_icon().unwrap().clone())
+                    .tooltip("协同文档编辑器")
+                    .menu(&menu)
+                    .on_menu_event(|app, event| match event.id.as_ref() {
+                        "new" => {
+                            let _ = app.emit("tray://new-room", ());
+                            show_main(app);
+                        }
+                        "show" => show_main(app),
+                        id if id.starts_with("room:") => {
+                            let code = id.strip_prefix("room:").unwrap().to_string();
+                            let _ = app.emit("tray://open-room", code);
+                            show_main(app);
+                        }
+                        _ => {}
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        if let TrayIconEvent::Click {
+                            button: MouseButton::Left,
+                            button_state: MouseButtonState::Up,
+                            ..
+                        } = event
+                        {
+                            show_main(tray.app_handle());
+                        }
+                    })
+                    .build(app)?;
+                app.manage(TrayState { tray });
+                Ok(())
+            })
+            .invoke_handler(tauri::generate_handler![set_recent_rooms]);
+    }
+
     builder
-        .setup(|app| {
-            let handle = app.handle().clone();
-            let menu = build_menu(&handle, &[])?;
-            let tray = TrayIconBuilder::with_id("coordination-tray")
-                .icon(handle.default_window_icon().unwrap().clone())
-                .tooltip("协同文档编辑器")
-                .menu(&menu)
-                .on_menu_event(|app, event| match event.id.as_ref() {
-                    "new" => {
-                        let _ = app.emit("tray://new-room", ());
-                        show_main(app);
-                    }
-                    "show" => show_main(app),
-                    id if id.starts_with("room:") => {
-                        let code = id.strip_prefix("room:").unwrap().to_string();
-                        let _ = app.emit("tray://open-room", code);
-                        show_main(app);
-                    }
-                    _ => {}
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click {
-                        button: MouseButton::Left,
-                        button_state: MouseButtonState::Up,
-                        ..
-                    } = event
-                    {
-                        show_main(tray.app_handle());
-                    }
-                })
-                .build(app)?;
-            app.manage(TrayState { tray });
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![set_recent_rooms])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
