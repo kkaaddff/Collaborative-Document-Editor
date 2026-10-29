@@ -1,34 +1,16 @@
 "use client";
 
-// 纯客户端 localStorage 工具：用户名持久化 + 最近房间列表。
+// 纯客户端 localStorage 工具：最近房间列表 + 通用同步 hook
+// （用户名经 useLocalStorageState(USERNAME_KEY) 持久化）。
 // 所有读写都带 SSR 守卫与 try/catch 降级（隐私模式 / 解析失败不致崩溃）。
 
-import { useEffect, useState } from "react";
+import { useCallback, useRef, useSyncExternalStore } from "react";
 import type { RecentRoom } from "@/types";
 
-const USERNAME_KEY = "coordination.username";
+// localStorage key（导出供 hook 调用方复用，避免魔法字符串）
+export const USERNAME_KEY = "coordination.username";
 const RECENT_ROOMS_KEY = "coordination.recentRooms";
 const MAX_RECENT_ROOMS = 20;
-
-// ---------- 用户名 ----------
-
-export function getUserName(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    return window.localStorage.getItem(USERNAME_KEY) ?? "";
-  } catch {
-    return "";
-  }
-}
-
-export function setUserName(name: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(USERNAME_KEY, name);
-  } catch {
-    /* 忽略写入失败（隐私模式等） */
-  }
-}
 
 // ---------- 最近房间 ----------
 
@@ -82,59 +64,78 @@ export function removeRecentRoom(code: string): void {
 
 // ---------- 通用 hook ----------
 
+// 同标签页写入通知（storage 事件只跨标签页触发，本页写完要自己广播）
+const sameTabBus = new EventTarget();
+
+function listenKey(key: string, onChange: () => void): () => void {
+  const onBus = () => onChange();
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === null || e.key === key) onChange();
+  };
+  sameTabBus.addEventListener(key, onBus);
+  window.addEventListener("storage", onStorage);
+  return () => {
+    sameTabBus.removeEventListener(key, onBus);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
 /**
- * 与 localStorage 同步的 state。SSR 安全：首渲染返回 initial，
- * mount 后再读取真实值，避免静态导出 hydration mismatch。
- * 可选跨标签页同步（监听 storage 事件）。
+ * 与 localStorage 同步的 state（useSyncExternalStore 实现）。
+ * SSR/静态导出安全：服务端快照恒为 initial，水合后自动切换真实值。
+ * 同标签页写入即时生效，跨标签页经 storage 事件同步。
  */
 export function useLocalStorageState<T>(
   key: string,
   initial: T
-): [T, (value: T | ((prev: T) => T)) => void, boolean] {
-  const [value, setValue] = useState<T>(initial);
-  const [hydrated, setHydrated] = useState(false);
+): [T, (value: T | ((prev: T) => T)) => void] {
+  // 快照缓存：raw 未变则复用上次引用，保证 getSnapshot 引用稳定
+  const cacheRef = useRef<{ raw: string | null; value: T } | null>(null);
 
-  // mount 后读
-  useEffect(() => {
+  const getSnapshot = useCallback((): T => {
+    let raw: string | null = null;
     try {
-      const raw = window.localStorage.getItem(key);
-      if (raw != null) {
-        setValue(JSON.parse(raw) as T);
-      }
+      raw = window.localStorage.getItem(key);
     } catch {
-      /* 忽略 */
+      raw = null;
     }
-    setHydrated(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+    let cache = cacheRef.current;
+    if (!cache || cache.raw !== raw) {
+      let value = initial;
+      if (raw != null) {
+        try {
+          value = JSON.parse(raw) as T;
+        } catch {
+          /* 解析失败回退 initial */
+        }
+      }
+      cache = { raw, value };
+      cacheRef.current = cache;
+    }
+    return cache.value;
+  }, [key, initial]);
 
-  // 写
-  const update = (next: T | ((prev: T) => T)) => {
-    setValue((prev) => {
+  const subscribe = useCallback(
+    (onChange: () => void) => listenKey(key, onChange),
+    [key]
+  );
+
+  const value = useSyncExternalStore(subscribe, getSnapshot, () => initial);
+
+  const update = useCallback(
+    (next: T | ((prev: T) => T)) => {
+      const prev = getSnapshot();
       const resolved =
         typeof next === "function" ? (next as (p: T) => T)(prev) : next;
       try {
         window.localStorage.setItem(key, JSON.stringify(resolved));
       } catch {
-        /* 忽略 */
+        /* 忽略写入失败（隐私模式等） */
       }
-      return resolved;
-    });
-  };
+      sameTabBus.dispatchEvent(new CustomEvent(key));
+    },
+    [key, getSnapshot]
+  );
 
-  // 跨标签页同步
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== key || e.newValue == null) return;
-      try {
-        setValue(JSON.parse(e.newValue) as T);
-      } catch {
-        /* 忽略 */
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [key]);
-
-  return [value, update, hydrated];
+  return [value, update];
 }

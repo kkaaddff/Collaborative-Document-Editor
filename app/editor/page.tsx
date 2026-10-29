@@ -39,6 +39,7 @@ import {
 import "@mdxeditor/editor/style.css";
 import "@/lib/fixTableCopy"; // 修复表格无法拷贝（给 TableNode 补 exportDOM）
 import { useCollaboration } from "@/lib/useCollaboration";
+import { getServerBase } from "@/lib/serverBase";
 import { upsertRecentRoom } from "@/lib/storage";
 import { User } from "@/types";
 
@@ -61,9 +62,7 @@ function EditorPageContent() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // 必须在客户端挂载后才渲染编辑器
-    // 注意：这在 useEffect 中设置状态是必要的，用于避免 hydration mismatch
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // 必须在客户端挂载后才渲染编辑器（避免 hydration mismatch）
     setMounted(true);
   }, []);
 
@@ -146,7 +145,7 @@ function EditorPageContent() {
     const formData = new FormData();
     formData.append("image", file);
     // 默认同源：适配 fnos connect 随机四级域名
-    const baseUrl = process.env.NEXT_PUBLIC_WS_URL || window.location.origin;
+    const baseUrl = getServerBase();
     try {
       const response = await fetch(`${baseUrl}/upload`, {
         method: "POST",
@@ -290,10 +289,6 @@ function EditorPageContent() {
                     quotePlugin(),
                     tablePlugin(),
                     codeBlockPlugin(),
-                    // codeMirrorPlugin({
-                    //   codeBlockTheme: "dark",
-                    //   codeBlockLanguageMap: {},
-                    // }),
                     thematicBreakPlugin(),
                     frontmatterPlugin(),
                     imagePlugin({
@@ -349,9 +344,6 @@ function EditorPageContent() {
                 <div>
                   <p className="font-medium text-gray-900 dark:text-white">
                     {user.name}
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    光标位置: {user.cursorPosition ?? 0}
                   </p>
                 </div>
               </div>

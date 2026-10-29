@@ -7,14 +7,10 @@ import {
   removeRecentRoom,
   upsertRecentRoom,
   useLocalStorageState,
+  USERNAME_KEY,
 } from "@/lib/storage";
+import { getServerBase } from "@/lib/serverBase";
 import type { RecentRoom } from "@/types";
-
-// 默认走同源：fnos connect 的四级域名是随机的，构建期无法内联。
-// 浏览器运行时取 window.location.origin，https 会被 y-websocket/fetch 自动当 wss/https。
-const getWsUrl = () =>
-  process.env.NEXT_PUBLIC_WS_URL ||
-  (typeof window !== "undefined" ? window.location.origin : "");
 
 type OnlineRoom = { code: string; userCount: number };
 
@@ -34,10 +30,7 @@ export default function Home() {
   const router = useRouter();
 
   // 用户名：localStorage 持久化、双面板共用、预填
-  const [userName, setUserName] = useLocalStorageState<string>(
-    "coordination.username",
-    ""
-  );
+  const [userName, setUserName] = useLocalStorageState<string>(USERNAME_KEY, "");
 
   const [roomCode, setRoomCode] = useState("");
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
@@ -96,7 +89,7 @@ export default function Home() {
   // 拉取服务器在线房间
   const fetchOnline = useCallback(async () => {
     try {
-      const res = await fetch(`${getWsUrl()}/health`);
+      const res = await fetch(`${getServerBase()}/health`);
       if (!res.ok) return;
       const data = await res.json();
       const raw = (

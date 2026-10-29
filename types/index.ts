@@ -1,8 +1,7 @@
-// 用户信息
+// 用户信息（awareness presence）
 export interface User {
   id: string;
   name: string;
-  cursorPosition: number;
   color?: string;
 }
 

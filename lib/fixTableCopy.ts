@@ -97,13 +97,14 @@ if (typeof window !== "undefined") {
   const proto = TableNode.prototype as unknown as {
     __mdastNode?: MdastNode;
     __mdxTableCopyPatched?: boolean;
+    exportDOM?: (this: { __mdastNode?: MdastNode }) => {
+      element: HTMLElement;
+    };
   };
   // idempotent：HMR/重复 import 不重复打补丁
   if (!proto.__mdxTableCopyPatched) {
     // 覆盖 DecoratorNode 默认的空 exportDOM，让 Lexical 拷贝时产出真实 <table>
-    (TableNode.prototype as any).exportDOM = function exportDOM(this: {
-      __mdastNode?: MdastNode;
-    }) {
+    proto.exportDOM = function exportDOM(this: { __mdastNode?: MdastNode }) {
       const table = this.__mdastNode ?? { type: "table", children: [] };
       return { element: mdastTableToHtml(table) };
     };

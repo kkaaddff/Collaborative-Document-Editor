@@ -10,7 +10,7 @@ import {
 } from "react";
 import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
-import { Awareness } from "y-protocols/awareness";
+import { getServerBase } from "@/lib/serverBase";
 import { User } from "@/types";
 
 interface UseCollaborationProps {
@@ -90,7 +90,6 @@ export function useCollaboration({
 
   const docRef = useRef<Y.Doc | null>(null);
   const textRef = useRef<Y.Text | null>(null);
-  const awarenessRef = useRef<Awareness | null>(null);
   const metaRef = useRef<Y.Map<unknown> | null>(null);
   const contentRef = useRef<string>("");
 
@@ -100,7 +99,7 @@ export function useCollaboration({
     }
 
     // 默认同源：适配 fnos connect 随机四级域名（构建期无法内联地址）
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || window.location.origin;
+    const wsUrl = getServerBase();
     const doc = new Y.Doc();
     const provider = new WebsocketProvider(wsUrl, roomCode, doc, {
       connect: true,
@@ -113,7 +112,6 @@ export function useCollaboration({
     docRef.current = doc;
     textRef.current = yText;
     metaRef.current = yMeta;
-    awarenessRef.current = awareness;
 
     const updateUsers = () => {
       const states = Array.from(awareness.getStates().values());
@@ -125,7 +123,6 @@ export function useCollaboration({
         .map((userState) => ({
           id: userState.id,
           name: userState.name,
-          cursorPosition: userState.cursorPosition ?? 0,
           color: userState.color ?? getUserColor(userState.id),
         }));
       onUsersChange(users);
@@ -169,7 +166,6 @@ export function useCollaboration({
       user: {
         id: userId,
         name: userName,
-        cursorPosition: 0,
         color: getUserColor(userId),
       },
     });
@@ -215,31 +211,6 @@ export function useCollaboration({
     [userId]
   );
 
-  const sendCursorPosition = useCallback(
-    (position: number) => {
-      const awareness = awarenessRef.current;
-      if (!awareness) {
-        return;
-      }
-
-      const state = awareness.getLocalState() ?? {};
-      const userState = state.user ?? {
-        id: userId,
-        name: userName,
-        color: getUserColor(userId),
-      };
-
-      awareness.setLocalState({
-        ...state,
-        user: {
-          ...userState,
-          cursorPosition: position,
-        },
-      });
-    },
-    [userId, userName]
-  );
-
   // 重命名房间（写共享 meta map，CRDT 收敛，全员同步）
   const renameRoom = useCallback((name: string) => {
     metaRef.current?.set("roomName", name);
@@ -249,7 +220,6 @@ export function useCollaboration({
     isConnected,
     error,
     applyLocalChange,
-    sendCursorPosition,
     renameRoom,
   };
 }
