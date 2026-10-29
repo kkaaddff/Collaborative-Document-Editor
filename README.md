@@ -114,13 +114,13 @@ npm run android:dev          # 真机/模拟器调试
 - **手动**（workflow_dispatch）：全矩阵构建，产物在 workflow Artifacts；可勾选 `deploy` 同时部署 Web 到生产（需 repo Secret `SSH_PRIVATE_KEY`，走 `deploy/deploy.sh` 全链路）。
 - **推 `v*` tag**：同矩阵，桌面产物自动挂到 Draft Release。
 
-| Job | Runner | 产物 |
+| Job | Runner | Artifacts（run 页面下载） |
 |---|---|---|
-| web | ubuntu | `web-dist.zip`（Vite 构建） |
-| desktop | macos-latest ×2 | `*.dmg`（aarch64 + x86_64） |
-| desktop | windows-latest | NSIS `*-setup.exe`（未签名） |
-| desktop | ubuntu-latest | `*.AppImage` + `*.deb` |
-| android | ubuntu-latest | `*.apk`（按 abi 拆分）+ `*.aab`（debug 签名） |
+| web | ubuntu | `web-dist`（`web-dist.zip`，Vite 构建） |
+| desktop | macos-latest ×2 | `desktop-dmg-aarch64`、`desktop-dmg-x86_64`（`*.dmg`） |
+| desktop | windows-latest | `desktop-nsis-x64`（NSIS `*-setup.exe`，未签名） |
+| desktop | ubuntu-latest | `desktop-linux-x64`（`*.AppImage` + `*.deb`） |
+| android | ubuntu-latest | `android-apk`（按 abi 拆分）+ `android-aab`（debug 签名） |
 
 > 未配置签名/公证证书：mac dmg 首次打开需右键→打开；win 会弹 SmartScreen；apk 为 debug 签名可直接侧载。正式签名后续用 repo Secrets 接入。
 

@@ -82,15 +82,25 @@ jobs:
           - os: macos-latest # arm64 runner 原生出 aarch64 dmg
             args: --target aarch64-apple-darwin --bundles dmg
             rust-targets: aarch64-apple-darwin
+            artifact-name: desktop-dmg-aarch64
+            artifact-path: client/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
           - os: macos-latest # 交叉出 x86_64 dmg（Intel Mac）
             args: --target x86_64-apple-darwin --bundles dmg
             rust-targets: x86_64-apple-darwin
+            artifact-name: desktop-dmg-x86_64
+            artifact-path: client/src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
           - os: windows-latest
             args: --bundles nsis
             rust-targets: ""
+            artifact-name: desktop-nsis-x64
+            artifact-path: client/src-tauri/target/release/bundle/nsis/*-setup.exe
           - os: ubuntu-latest # AppImage + deb（托盘需 ayatana 依赖）
             args: --bundles appimage,deb
             rust-targets: ""
+            artifact-name: desktop-linux-x64
+            artifact-path: |
+              client/src-tauri/target/release/bundle/appimage/*.AppImage
+              client/src-tauri/target/release/bundle/deb/*.deb
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -127,11 +137,20 @@ jobs:
         with:
           projectPath: client
           args: ${{ matrix.args }}
-          # 仅 tag 触发时建 Release（Draft），手动触发只出 workflow 产物
+          # 仅 tag 触发时建 Release（Draft）挂产物；手动触发时 tauri-action 会
+          # "No releaseId or tagName provided, skipping all uploads"，靠下面显式上传
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: "Coordination ${{ github.ref_name }}"
           releaseDraft: true
           prerelease: false
+
+      # 手动触发也必须能下载产物（用户要求：触发即出全套可取回）
+      - name: 上传桌面产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-path }}
+          if-no-files-found: error
 
   # ---------- Android（apk 按 abi 拆分 + aab；v1 debug 签名可直接装机） ----------
   android:
