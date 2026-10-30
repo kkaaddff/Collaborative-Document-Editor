@@ -11,16 +11,17 @@ This document collects the guardrails for anyone running autonomous or semi-auto
 - Server address is resolved at RUNTIME by `client/src/lib/serverConfig.ts` (`?server=` param > saved config > `VITE_SERVER_URL` dev-only > same-origin). Never inline server addresses at build time.
 - QR payloads are Web URLs (`<server>/join?code=&server=`) consumed by `/join` — any phone camera works as a fallback; in-app scanning goes through `platform/scanQr.ts` (native plugin on Android, jsQR+getUserMedia elsewhere).
 - Packaging runs entirely on GitHub Actions (`.github/workflows/build.yml`: web, desktop mac/win/linux, android). Local machines need no Rust/JDK — local work is `tsc`/`eslint`/`vite build` + convergence smoke only.
-- Deployment is internalized under `deploy/` (`config.sh`, `deploy.sh`, `remote-restart.sh`, `nginx/` site configs) driven by `npm run deploy`; `setup.sh` bootstraps local dev, `ecosystem.config.js` configures PM2, and `Dockerfile`/`docker-compose.yml` build the all-in-one image.
+- Two-remote flow: `origin` is the private Gitea repo (day-to-day dev pushes; every push to main auto-deploys server+web via `.gitea/workflows/deploy.yml` on the self-hosted runner) and `github` is the public release repo (push `main` + `v*` tags only when releasing; all GitHub operations go through `gh`).
+- Self-hosting is the all-in-one Docker image (`Dockerfile`/`docker-compose.yml`: web static + WS on one port, uploads in the `polyphony-uploads` named volume); `setup.sh` bootstraps local dev.
 - `docs/` is the full v3 handoff: architecture, collaboration internals, CI, deploy, testing, plus the decision log and gotcha inventory (`docs/decisions.md`). Consult it before re-deriving a design or re-debugging a known trap.
 
 ### Build, Test, and Development Commands
 - Install dependencies with `npm install` in `client/` and `server/` (root package.json is an orchestrator only; `setup.sh` does both).
 - Launch the UI via `npm run dev` (Vite :5173), start the collaboration service with `npm run server` (:3001), or run both together through `npm run dev:all`.
-- Production web build is `client/dist/` (Vite). Ship via `npm run deploy` (build → tar/scp upload → remote nginx + pm2 restart); desktop/android packages come from GitHub Actions, not local builds.
-- `npm run lint` / `npm run build` delegate to `client/` (tsc --noEmit + eslint + vite build); `npm run health` runs the health check against the PM2 ecosystem.
+- Production web build is `client/dist/` (Vite). Self-hosting is the all-in-one Docker image (`docker compose up -d`, serves web + WS on one port); server+Web deploys are automated by the private Gitea CI (`.gitea/workflows/deploy.yml`). Desktop/android packages come from GitHub Actions releases, not local builds.
+- `npm run lint` / `npm run build` delegate to `client/` (tsc --noEmit + eslint + vite build).
 - Tauri local dev (optional, needs Rust): `cd client && npx tauri dev`; Android: `npm run android:init` (init + manifest patch) then `npm run android:dev`.
-- Use the PM2 helpers (`npm run pm2:start`, `pm2:stop`, `pm2:restart`, `pm2:logs`) when operating in managed environments.
+- The legacy PM2/OpenResty deploy chain (`deploy/`, `ecosystem.config.js`) was removed in v3.1 — Docker all-in-one replaced it; see `docs/deploy-and-ops.md` and `docs/decisions.md` (#18).
 
 ### Coding Style & Naming Conventions
 - Code in TypeScript and modern React. Respect the linting profile defined in `client/eslint.config.mjs` and keep indentation at two spaces.

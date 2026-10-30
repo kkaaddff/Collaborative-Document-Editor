@@ -46,14 +46,6 @@ echo ""
 echo "📝 重建 client/.env.local ..."
 echo "VITE_SERVER_URL=http://localhost:3001" > client/.env.local
 echo "✅ 环境变量文件已重建 (client/.env.local: VITE_SERVER_URL)"
-
-# 创建日志目录
-if [ ! -d logs ]; then
-    mkdir -p logs
-    echo "✓ 日志目录已创建"
-else
-    echo "✓ 日志目录已存在"
-fi
 echo ""
 
 echo "================================"
@@ -68,11 +60,8 @@ echo "  或分别启动:"
 echo "    npm run dev      # 启动前端 (Vite)"
 echo "    npm run server   # 启动 WebSocket 服务器"
 echo ""
-echo "  健康检查:"
-echo "    npm run health"
-echo ""
-echo "  生产部署 (本地构建 → 上传 → 重启远端 nginx+pm2):"
-echo "    npm run deploy   # 详见 deploy/ 与 README「部署」章节"
+echo "  自托管（单容器 = 前端 + 协同 WS）:"
+echo "    docker compose up -d   # 详见 README「快速开始」"
 echo ""
 echo "📚 文档:"
 echo "  - README.md          完整文档（含快速开始与部署）"
