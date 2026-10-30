@@ -17,3 +17,5 @@ services:
 
 volumes:
   polyphony-uploads:
+    # 固定卷名:不带 compose 项目前缀(CI 每次在 /tmp/polyphony-src 下 up,目录名不稳定)
+    name: polyphony-uploads
