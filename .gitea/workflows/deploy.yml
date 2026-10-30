@@ -1,0 +1,139 @@
+# 复调 Polyphony —— server+Web 一体机构建与部署（fnos 自建 runner，标签 fnos）。
+# 模式同 weibo-digest：fnos 访问不了 github.com，不用 actions/checkout，
+# 而是用 GITEA_TOKEN 从本 Gitea 克隆；构建/部署全程 docker compose。
+# 端产物（dmg/exe/apk）不在本流水线构建 —— 那是 GitHub Release 的事。
+#
+# 语义：push main 即部署（构建期间旧容器照常服务，仅换容器瞬间断连，
+# 客户端自动从 IndexedDB 重同步）。纯文档推送不触发部署，不踢在线用户。
+name: build-and-deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+  workflow_dispatch:
+
+# 连续快速推送时只保留最新一次部署，避免两个 compose 流程互相竞争
+concurrency:
+  group: deploy-fnos
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # fnos 上注册的 runner（host 标签）：docker + compose 可用，容器原地重建
+    runs-on: fnos
+    steps:
+      - name: Checkout（自 Gitea 克隆）
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          set -eu
+          cd /tmp
+          rm -rf polyphony-src
+          REPO_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git clone --depth 1 "https://oauth2:${GITEA_TOKEN}@${REPO_URL#https://}" polyphony-src
+
+      # paths-ignore 的版本无关兜底：按 before..sha 实际 diff 判断，
+      # 多 commit 合并推送也不会漏判（paths-ignore 只看触发文件列表）。
+      - name: 纯文档推送早退
+        run: |
+          cd /tmp/polyphony-src
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "SHOULD_DEPLOY=true" >> "$GITHUB_ENV"; exit 0
+          fi
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+             || ! git fetch --depth=1 origin "$BEFORE" 2>/dev/null; then
+            echo "无法取到 diff 基点，按需部署处理"
+            echo "SHOULD_DEPLOY=true" >> "$GITHUB_ENV"; exit 0
+          fi
+          changed=$(git diff --name-only "$BEFORE" "$AFTER" || true)
+          echo "变更文件："; echo "$changed"
+          if [ -n "$changed" ] && ! echo "$changed" | grep -qvE '^(\.zcode/|\.claude/|docs/|[^/]+\.md$)'; then
+            echo "纯文档推送，跳过部署（不打扰在线用户）"
+            echo "SHOULD_DEPLOY=false" >> "$GITHUB_ENV"
+          else
+            echo "SHOULD_DEPLOY=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: 构建镜像（registry 抖动自动重试 ×3）
+        if: env.SHOULD_DEPLOY == 'true'
+        run: |
+          set -eu
+          cd /tmp/polyphony-src
+          n=0
+          until docker compose build; do
+            n=$((n+1))
+            [ "$n" -ge 3 ] && { echo "构建失败（已重试 $n 次）"; exit 1; }
+            echo "第 $n 次构建失败，30s 后重试"; sleep 30
+          done
+          SHA="${{ github.sha }}"
+          # 版本化标签：回滚与审计都用它
+          docker tag polyphony:latest "polyphony:${SHA:0:12}"
+
+      - name: 换容器
+        if: env.SHOULD_DEPLOY == 'true'
+        run: |
+          set -eu
+          cd /tmp/polyphony-src
+          # 留回滚点：换容器前把当前 latest 固化为 rollback
+          if docker image inspect polyphony:latest >/dev/null 2>&1; then
+            docker tag polyphony:latest polyphony:rollback
+          else
+            echo "首次部署，无回滚镜像"
+          fi
+          docker compose up -d --force-recreate
+          docker image prune -f >/dev/null 2>&1 || true
+
+      - name: 验证（health + 双端收敛冒烟；失败自动回滚）
+        if: env.SHOULD_DEPLOY == 'true'
+        run: |
+          set -u
+          fail=0
+          # health 重试 5×3s：容器冷启动/依赖安装完成需要缓冲
+          ok=""
+          for i in 1 2 3 4 5; do
+            sleep 3
+            if docker exec polyphony wget -qO- http://127.0.0.1:9091/health 2>/dev/null | grep -q '"status":"ok"'; then
+              ok=1; break
+            fi
+            echo "health 第 $i 次未就绪，3s 后重试"
+          done
+          [ -n "$ok" ] || { echo "❌ health 检查失败"; fail=1; }
+
+          if [ "$fail" -eq 0 ]; then
+            # 双客户端 CRDT 收敛冒烟（镜像自带脚本与依赖，容器内自环验证）
+            if ! docker exec polyphony node server/convergence-smoke.mjs ws://127.0.0.1:9091; then
+              echo "❌ 收敛冒烟失败"; fail=1
+            fi
+          fi
+
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::部署验证失败，自动回滚到上一版本"
+            if docker image inspect polyphony:rollback >/dev/null 2>&1; then
+              cd /tmp/polyphony-src
+              docker tag polyphony:rollback polyphony:latest
+              docker compose up -d --force-recreate
+              sleep 5
+              if docker exec polyphony wget -qO- http://127.0.0.1:9091/health 2>/dev/null | grep -q '"status":"ok"'; then
+                echo "✅ 已回滚，线上恢复旧版本（本次构建仍标记失败，请排查后重推）"
+              else
+                echo "::error::回滚后 health 仍异常，需人工介入"
+              fi
+            else
+              echo "::error::无 rollback 镜像（疑似首次部署），需人工处理"
+            fi
+            exit 1
+          fi
+          echo "✅ 部署完成：http://<fnos>:9091（health ok，收敛冒烟通过）"
+
+      - name: 镜像保留策略（SHA 标签只留最近 5 个）
+        if: env.SHOULD_DEPLOY == 'true'
+        run: |
+          # docker images 按创建时间新→旧排列；tail -n +6 = 删除第 6 以后
+          docker images polyphony --format '{{.Tag}}' \
+            | grep -E '^[0-9a-f]{12}$' | tail -n +6 \
+            | while read -r t; do docker rmi "polyphony:$t" >/dev/null 2>&1 || true; done
