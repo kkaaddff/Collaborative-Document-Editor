@@ -89,7 +89,7 @@ export default function Settings() {
               id="serverUrl"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="http://192.168.1.10:8101 或 https://docz.hengheng.online"
+              placeholder="http://192.168.1.10:9091 或 https://docs.example.com"
               spellCheck={false}
               autoComplete="off"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono text-sm"

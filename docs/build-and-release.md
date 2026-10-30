@@ -18,8 +18,8 @@
 | Job | Runner | 产物 | Release 附件 |
 |---|---|---|---|
 | web | ubuntu | `web-dist.zip`（Vite dist） | ✓ |
-| desktop (mac) | macos-latest（arm64 runner） | `Coordination_3.0.0_aarch64.dmg` | ✓（tauri-action） |
-| desktop (win) | windows-latest | `Coordination_3.0.0_x64-setup.exe`（nsis） | ✓ |
+| desktop (mac) | macos-latest（arm64 runner） | `Polyphony_<ver>_aarch64.dmg` | ✓（tauri-action） |
+| desktop (win) | windows-latest | `Polyphony_<ver>_x64-setup.exe`（nsis） | ✓ |
 | desktop (linux) | ubuntu | `*.AppImage` + `*.deb` | ✓ |
 | android | ubuntu | `app-universal-debug.apk`（arm64-v8a） | ✓ |
 
@@ -46,12 +46,16 @@
 
 1. 改版本：`client/src-tauri/tauri.conf.json` 的 `version`（三平台产物名与 Release 标签都从这取）。
 2. push 后 Actions 页手动 Run workflow（默认即出全套 + Release）；或推 `v*` tag。
-3. 产物取回：Release 页 6 个附件；或勾 `deploy=true` 让 web job 直接走 `deploy/deploy.sh` 上生产（需 `SSH_PRIVATE_KEY` secret）。
-4. 查询用 `gh`（本仓库约定 GitHub 操作一律 gh；origin 已是 HTTPS + gh 凭据）：
+3. 产物取回：Release 页 6 个附件。（server+Web 的生产部署不经此流水线——自建 Gitea CI 负责，见 deploy-and-ops.md。）
+4. 查询用 `gh`（本仓库约定 GitHub 操作一律 gh；`github` remote 已是 HTTPS + gh 凭据）：
    ```bash
-   gh run list --repo kkaaddff/Collaborative-Document-Editor
-   gh release view v3.0.0 --repo kkaaddff/Collaborative-Document-Editor
+   gh run list --repo kkaaddff/polyphony
+   gh release view v3.1.0 --repo kkaaddff/polyphony
    ```
+
+> 本流水线加了 job 级守卫 `if: github.server_url == 'https://github.com'`：仓库镜像到 Gitea 时，
+> Gitea Actions 会同时读 `.github/workflows/`——没有守卫的话每次 dev push 都会在自建 runner 上
+> 尝试跑端产物流水线（actions/checkout 不可用，必挂）。
 
 ## 待验证 / 未做
 

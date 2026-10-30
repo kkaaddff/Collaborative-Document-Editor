@@ -16,8 +16,15 @@
 | 10 | e2e 只在本地，绝不进 CI | 依赖本机 Chrome/真实端口/系统剪贴板，CI 慢且不稳；CI 定位是"只出包" |
 | 11 | 托盘/菜单代码 `#[cfg(desktop)]` 门控 | 这些 API 桌面-only，不门控 android 目标编译失败（实踩 E0432/E0599） |
 | 12 | Tauri 差异全部收口 `client/src/platform/` | 页面/组件禁止直接 import `@tauri-apps/*`，保证 Web 构建不被原生依赖污染 |
-| 13 | 部署内化 `deploy/` + `npm run deploy` | tar over ssh（不依赖远端 rsync）+ nginx conf 版本化进仓库 + PM2 单进程 |
+| 13 | 部署内化 `deploy/` + `npm run deploy` | tar over ssh（不依赖远端 rsync）+ nginx conf 版本化进仓库 + PM2 单进程（v3.1 起被 #18 取代，脚本删除、git 历史留档） |
 | 14 | CORS 全开、房间码即凭据、明文 ws | 内网/受信场景的产品定位；公网使用需自行 TLS 反代（如实文档化，不做假安全） |
+| 15 | 项目更名 coordination-v2 → **Polyphony/复调**（v3.1.0） | 巴赫复调：多独立声部无指挥收敛为一份总谱 = CRDT 语义；品牌/包名/identifier/存储键全量更名 |
+| 16 | 双仓流：私有 Gitea 开发主仓 + GitHub 发布仓 | dev push 即 CI 部署（含内部拓扑不外泄）；GitHub 只收 tag/release 面向公众；Gitea push mirror 自动灾备到 GitHub 私有镜像仓 |
+| 17 | 存储键 `coordination.*` → `polyphony.*` 不做迁移 | 个人产品、成本大于收益；升级后重填用户名/服务器即可；已记入 CHANGELOG 升级说明 |
+| 18 | 自托管统一 Docker all-in-one（退役 PM2+OpenResty 链路） | 单容器=全功能、可复现、换机零成本；Yjs 房间态本就在内存（客户端 IndexedDB 兜底），容器化不引入新数据风险；上传图片进具名卷 |
+| 19 | Gitea CI：纯文档推送不部署 + 验证失败自动回滚 | README 错字不该踢在线用户下线；health+收敛冒烟双验证挡住坏构建；镜像按 git SHA 版本化 |
+| 20 | `.github/workflows` 加 `server_url` 守卫 | Gitea 会同时读取 `.github/workflows/`，无守卫则 dev push 在自建 runner 上跑端产物流水线必挂 |
+| 21 | 公开文档不出现内网 IP/域名/路径 | 仓库公开于 GitHub，运维细节只留在私有 Gitea；git 历史不重写（无密钥，仅旧拓扑，接受残留） |
 
 ## 坑清单（按"再遇到怎么识别"组织）
 
@@ -28,7 +35,7 @@
 | 本地 npm install 写回私有镜像 URL | `client/package-lock.json` 出现 `amh-group` 域 | **push 前必查** `rg -c amh-group client/package-lock.json`；e2e/ 已配 npmmirror `.npmrc` |
 | rollup optional 平台原生包被裁剪 | 其它平台 `npm ci` 缺 `@rollup/*-gnu/msvc`（npm/cli#4828） | CI 用 `npm install`；升级 rollup 时 `optionalDependencies` 三项必须严格同步同版 |
 | npmmirror 在海外 runner 不稳 | `npm ci` 中途崩且退出码 0 → 半残 node_modules | CI `NPM_CONFIG_REGISTRY` 覆盖回官方源 + `test -x node_modules/.bin/tsc` 兜底 |
-| 本地路径 em-dash | `coordination—v2` 下 Android Gradle 直接挂 | 本地 checkout 必须 ASCII `coordination-v2`；**远端** `REMOTE_APP_DIR` 至今含 em-dash，引用必须双引号 |
+| 本地路径 em-dash | 非 ASCII 路径下 Android Gradle 直接挂 | 本地 checkout 必须 ASCII（现 `polyphony`）；旧 PM2 链路的远端目录曾含 em-dash，凡遇此类路径引用必须双引号 |
 | tauri-action 无 tagName 跳过上传 | 手动触发 Release 空 | 显式 upload-artifact 兜底 + `gh release create ... || true` + `--clobber` |
 | gh CLI 不展开 glob | `**/*.apk` 传给 gh 报找不到 | `shopt -s globstar nullglob` |
 
@@ -48,7 +55,7 @@
 |---|---|---|
 | nginx `/_next/static/` 遗留 | v3 的 `/assets/` 吃不到 immutable 缓存 | 下次部署改 `location /assets/`（不影响正确性） |
 | fake-IP 代理到 GitHub 抖动 | git push SSH/HTTPS 失败、`gh api` EOF | GitHub 操作一律 `gh`（origin 已 HTTPS + gh 凭据）；EOF 多为网络抖动，隔秒重试，别急着查凭据 |
-| `github.pluscn.cn` 是另一 GHE | 找不到本仓库 | 它是公司实例（账号 qicheng-zhang），本仓库只在 github.com/kkaaddff |
+| 多 GitHub 实例并存 | 找不到本仓库 | 本仓库只在 github.com/kkaaddff；其它 GHE 实例与本仓库无关 |
 | zsh `=word` 展开 | `echo ======` 报 `not found` | 分隔符加引号 |
 | SSH 私钥进 CI | secret 泄漏面 | 只经 `env: SSH_KEY: ${{ secrets.SSH_PRIVATE_KEY }}` 间接引用，绝不写进 run 脚本 |
 
@@ -64,8 +71,10 @@
 
 ## 后续路线（v2 候选）
 
+- **服务端文档持久化（y-leveldb）**：容器重建时全关客户端的房间会清空（在线客户端从 IndexedDB 自动恢复）；`setupWSConnection` 接 persistence 即治本——改协同核心，按规矩全量冒烟后单独立项
+- **/health 房间码暴露**：公开部署 `/health` 列出房间码与人数；可加 `HEALTH_DETAIL=0` 开关或反代屏蔽
 - 修同 context awareness 归属（patch utils.js 或换 `@y/websocket-server`）
 - Android 正式签名 + aab + 16KB page size 合规；iOS 出包评估
 - mac 公证 / win 代码签名；自动更新（需签名与分发清单）
 - 移动端 MDXEditor 软键盘/选区体验（不适配则降级只读/简易模式）
-- nginx 缓存规则换 `/assets/`；主包 1.3MB 可做 code-split
+- 主包 1.3MB 可做 code-split

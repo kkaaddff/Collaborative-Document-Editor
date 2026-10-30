@@ -22,16 +22,15 @@
 | express + ws + y-websocket relay (Yjs docs + awareness) |
 | POST /upload multer <=5MB   GET /health room stats      |
 | STATIC_DIR static hosting + SPA fallback (same origin)  |
-| dev :3001   |   prod :8101 (PM2 coordination-ws)        |
+| dev :3001   |   docker all-in-one :9091         |
 +-------------------------------------|-------------------+
                                       |
-                                      | ssh deploy (deploy/deploy.sh)
+                                      | docker compose up -d --build
                                       v
 +-----------------------------------------------+
-| Production host (1Panel openresty)            |
-| nginx: /ws/* -> 127.0.0.1:8101 (strip prefix) |
-| static dist -> docz site (STATIC_DIR)         |
-| http://docz.hengheng.online                   |
+| Production host (any docker host)             |
+| container: polyphony  (web static + ws :9091) |
+| optional: nginx TLS reverse proxy in front    |
 +-----------------------------------------------+
 ```
 
@@ -53,7 +52,7 @@ server/                     # 独立 Node 服务（零框架依赖升级压力�
 ├── index.js               # express + ws + y-websocket + multer + STATIC_DIR 静态托管
 └── convergence-smoke.mjs  # 收敛冒烟脚本
 e2e/                        # Playwright UI 回归（仅本地，绝不进 CI）
-deploy/                     # 部署内化：config.sh / deploy.sh / remote-restart.sh / nginx/
+.gitea/workflows/           # server+Web 一体机构建部署（自建 runner；端产物归 GitHub）
 ```
 
 ## 子系统设计
@@ -98,7 +97,7 @@ deploy/                     # 部署内化：config.sh / deploy.sh / remote-rest
 
 ### 5. 离线缓存 — y-indexeddb
 
-`useCollaboration` 内一行接入：`new IndexeddbPersistence(\`coordination-room-${roomCode}\`, doc)`。
+`useCollaboration` 内一行接入：`new IndexeddbPersistence(\`polyphony-room-${roomCode}\`, doc)`。
 
 - 断网可编辑，重连后 CRDT 自动合并（Yjs 强项）。
 - 隐私模式等 IndexedDB 不可用场景 try/catch 静默跳过，不影响在线协同。

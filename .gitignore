@@ -53,3 +53,6 @@ yarn-error.log*
 next-env.d.ts
 # ZCode session artifacts
 /.zcode/
+
+# 内部记忆(含运维拓扑,不入公开仓库)
+/.claude/
