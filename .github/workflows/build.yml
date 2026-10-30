@@ -3,7 +3,10 @@
 # Release 标签：推 tag 时用 tag 名；手动触发用 v+tauri.conf.json 版本号（重复触发同版本会覆盖同名附件）。
 # 说明：本机无需 Rust/JDK——本地只跑 tsc/eslint/vite build 与收敛冒烟，出包一律走这里。
 # 本流水线只在 GitHub 上跑（release 面向公众）；Gitea 侧的 server+Web 部署在
-# .gitea/workflows/deploy.yml，各管各的，因此 job 级加 server_url 守卫防止 Gitea 误触发。
+# .gitea/workflows/deploy.yml，各管各的。仓库镜像到 Gitea 时本文件也会被其 Actions
+# 读到（推 v* tag 即触发，且 ubuntu-latest 标签在自建 runner 上永远排队），因此 job 级
+# 用仓库变量守卫：仅 GitHub 仓配置了 Actions 变量 DEPLOY_ENV=github（Gitea 上不设即跳过）。
+# （server_url 守卫不可靠：Gitea 的 DEFAULT_ACTIONS_URL 常默认 github.com。）
 name: build
 
 on:
@@ -29,7 +32,7 @@ env:
 jobs:
   # ---------- Web（Vite 静态产物，挂 Release 供自托管下载） ----------
   web:
-    if: ${{ github.server_url == 'https://github.com' }}
+    if: ${{ vars.DEPLOY_ENV == 'github' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -103,7 +106,7 @@ jobs:
               client/src-tauri/target/release/bundle/appimage/*.AppImage
               client/src-tauri/target/release/bundle/deb/*.deb
     runs-on: ${{ matrix.os }}
-    if: ${{ github.server_url == 'https://github.com' }}
+    if: ${{ vars.DEPLOY_ENV == 'github' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -167,7 +170,7 @@ jobs:
 
   # ---------- Android（仅 arm64 单 apk：最新 Android 设备均为 arm64-v8a；v1 debug 签名可直接装机） ----------
   android:
-    if: ${{ github.server_url == 'https://github.com' }}
+    if: ${{ vars.DEPLOY_ENV == 'github' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

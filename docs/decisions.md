@@ -23,7 +23,7 @@
 | 17 | 存储键 `coordination.*` → `polyphony.*` 不做迁移 | 个人产品、成本大于收益；升级后重填用户名/服务器即可；已记入 CHANGELOG 升级说明 |
 | 18 | 自托管统一 Docker all-in-one（退役 PM2+OpenResty 链路） | 单容器=全功能、可复现、换机零成本；Yjs 房间态本就在内存（客户端 IndexedDB 兜底），容器化不引入新数据风险；上传图片进具名卷 |
 | 19 | Gitea CI：纯文档推送不部署 + 验证失败自动回滚 | README 错字不该踢在线用户下线；health+收敛冒烟双验证挡住坏构建；镜像按 git SHA 版本化 |
-| 20 | `.github/workflows` 加 `server_url` 守卫 | Gitea 会同时读取 `.github/workflows/`，无守卫则 dev push 在自建 runner 上跑端产物流水线必挂 |
+| 20 | `.github/workflows` 加 `vars.DEPLOY_ENV == 'github'` 守卫 | Gitea 会同时读取 `.github/workflows/`，无守卫则推 tag 在自建 runner 上跑端产物流水线（ubuntu-latest 标签无人认领，永远排队）。`server_url` 守卫不可靠：Gitea 的 DEFAULT_ACTIONS_URL 常默认 github.com；仓库变量只在 GitHub 仓配置，确定性生效 |
 | 21 | 公开文档不出现内网 IP/域名/路径 | 仓库公开于 GitHub，运维细节只留在私有 Gitea；git 历史不重写（无密钥，仅旧拓扑，接受残留） |
 
 ## 坑清单（按"再遇到怎么识别"组织）

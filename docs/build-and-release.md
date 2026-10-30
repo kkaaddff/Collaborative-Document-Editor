@@ -53,9 +53,11 @@
    gh release view v3.1.0 --repo kkaaddff/polyphony
    ```
 
-> 本流水线加了 job 级守卫 `if: github.server_url == 'https://github.com'`：仓库镜像到 Gitea 时，
-> Gitea Actions 会同时读 `.github/workflows/`——没有守卫的话每次 dev push 都会在自建 runner 上
-> 尝试跑端产物流水线（actions/checkout 不可用，必挂）。
+> 本流水线加了 job 级守卫 `if: vars.DEPLOY_ENV == 'github'`：仓库镜像到 Gitea 时，
+> Gitea Actions 会同时读 `.github/workflows/`（推 `v*` tag 即触发；其自建 runner 无
+> `ubuntu-latest` 标签，job 会永远排队）。守卫用仓库 Actions 变量——只在 GitHub 仓配置
+> `DEPLOY_ENV=github`，Gitea 侧不设即全部跳过。`server_url` 类守卫不可靠（Gitea 的
+> DEFAULT_ACTIONS_URL 常默认 github.com）。
 
 ## 待验证 / 未做
 
