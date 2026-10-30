@@ -10,6 +10,7 @@ import * as Y from "yjs";
 import { WebsocketProvider } from "y-websocket";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { getServerBase } from "./serverConfig";
+import { getToken } from "./auth";
 import { User } from "@/types";
 
 interface UseCollaborationProps {
@@ -99,10 +100,13 @@ export function useCollaboration({
 
     // 运行时解析服务器地址（URL 参数 > 已保存配置 > dev 环境变量 > 同源）
     const wsUrl = getServerBase();
+    // WS 强制鉴权:连接携带账号 token(服务端校验失败 close 4001)
+    const token = getToken();
+    if (!token) return;
     const doc = new Y.Doc();
     const provider = new WebsocketProvider(wsUrl, roomCode, doc, {
       connect: true,
-      params: { userId },
+      params: { token, userId },
     });
     const yText = doc.getText("document");
     const yMeta = doc.getMap<unknown>("meta");

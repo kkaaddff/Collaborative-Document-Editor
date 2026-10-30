@@ -84,6 +84,38 @@ export const zh = {
     needName: "请先设置用户名，加入房间",
   },
 
+  welcome: {
+    title: "欢迎使用复调",
+    subtitle: "多个声部，一份总谱。—— 开始之前，先登录你的账号",
+    createTab: "创建账号",
+    loginTab: "粘贴 token 登录",
+    serverLabel: "服务器地址",
+    serverHint: "浏览器打开本站时留空即用当前地址；App 需填写（如 http://IP:9091）",
+    nameLabel: "用户名",
+    namePlaceholder: "为账号起个名字（1-20 字符，创建后不可改）",
+    createBtn: "创建账号",
+    webOnlyNote: "账号仅支持在 Web 端创建。桌面 / Android 端请先在浏览器创建，再回到这里粘贴 token 登录。",
+    tokenTitle: "账号创建成功",
+    tokenNameLabel: "用户名",
+    tokenWarn: "请立即保管你的登录 token —— 仅此一次展示，离开本页后无法再查看。丢失只能重新创建账号。",
+    copy: "复制",
+    copied: "已复制",
+    confirmBtn: "我已妥善保管，进入复调",
+    loginLabel: "登录 token",
+    loginPlaceholder: "粘贴以 poly_ 开头的 token",
+    loginBtn: "验证并登录",
+    errNameTaken: "用户名已被占用，换一个试试",
+    errNameInvalid: "用户名需为 1-20 个字符",
+    errInvalidToken: "token 无效或已失效",
+    errNetwork: "无法连接服务器，请检查地址",
+    errWebOnly: "账号仅支持在 Web 端创建",
+  },
+
+  topbar: {
+    logout: "退出登录",
+    logoutConfirm: "退出登录将清除本机的 token，确定继续？",
+  },
+
   roomHeader: {
     room: "房间:",
     roomNamePlaceholder: "输入房间名",

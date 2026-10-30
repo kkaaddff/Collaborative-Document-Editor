@@ -7,6 +7,7 @@ import "@/lib/fixTableCopy"; // 修复表格无法拷贝（给 TableNode 补 exp
 import { useCollaboration } from "@/lib/useCollaboration";
 import { getServerBase } from "@/lib/serverConfig";
 import { upsertRecentRoom } from "@/lib/storage";
+import { authFetch, useAccount } from "@/lib/auth";
 import { useT } from "@/i18n";
 import { createEditorPlugins } from "@/components/editorConfig";
 import { RoomHeader } from "@/components/RoomHeader";
@@ -31,12 +32,14 @@ export default function Editor() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { t } = useT();
+  const { account } = useAccount();
 
   const roomCode = useMemo(
     () => searchParams.get("code")?.toUpperCase() ?? "",
     [searchParams]
   );
-  const userName = searchParams.get("name") || t("common.anonymous");
+  // 优先 URL 带名(Join/首页跳转);否则回落账号名
+  const userName = searchParams.get("name") || account?.name || t("common.anonymous");
   const [userId] = useState(
     () => `user-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
   );
@@ -102,10 +105,10 @@ export default function Editor() {
   const handleImageUpload = useCallback(async (file: File) => {
     const formData = new FormData();
     formData.append("image", file);
-    // 运行时解析服务器地址（直连 IP 或同源）
+    // 运行时解析服务器地址（直连 IP 或同源）;上传需登录(authFetch 自动带 Bearer)
     const baseUrl = getServerBase();
     try {
-      const response = await fetch(`${baseUrl}/upload`, {
+      const response = await authFetch(`${baseUrl}/upload`, {
         method: "POST",
         body: formData,
       });

@@ -1,9 +1,10 @@
 // /join?code=XXXX&server=http://...  扫码落地页。
-// 固化 server 配置后二选一：已有用户名 → 直进编辑器；否则回首页预填房间码（让用户起名）。
+// 固化 server 配置后:无 token → 带 next 去 /welcome 登录;有 token →
+// 取账号名直进编辑器(名字不再依赖本地手填)。
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { saveServer } from "@/lib/serverConfig";
-import { getSavedUsername } from "@/lib/storage";
+import { getToken, verifyLogin } from "@/lib/auth";
 import { useT } from "@/i18n";
 
 export default function Join() {
@@ -22,17 +23,25 @@ export default function Join() {
       return;
     }
 
-    // 经 getSavedUsername：hook 存的是 JSON 串，裸读会带引号进编辑器
-    const savedName = getSavedUsername();
+    const enter = (name: string) =>
+      navigate(
+        `/editor?code=${code}&name=${encodeURIComponent(name)}`,
+        { replace: true }
+      );
 
-    if (savedName.trim()) {
-      navigate(`/editor?code=${code}&name=${encodeURIComponent(savedName.trim())}`, {
-        replace: true,
-      });
-    } else {
-      setMessage(t("join.needName"));
-      navigate(`/?join=${code}`, { replace: true });
+    if (!getToken()) {
+      // 未登录:登录后回到本落地页继续进房
+      const next = encodeURIComponent(`/join?code=${code}${server ? `&server=${encodeURIComponent(server)}` : ""}`);
+      navigate(`/welcome?next=${next}`, { replace: true });
+      return;
     }
+
+    verifyLogin(server ?? "", getToken())
+      .then((acc) => enter(acc.name))
+      .catch(() => {
+        setMessage(t("join.needName"));
+        navigate(`/?join=${code}`, { replace: true });
+      });
   }, [searchParams, navigate, t]);
 
   return (

@@ -89,6 +89,38 @@ export const en = {
     needName: "Set a username first to join the room",
   },
 
+  welcome: {
+    title: "Welcome to Polyphony",
+    subtitle: "Many voices. One score. — Sign in to your account to begin",
+    createTab: "Create account",
+    loginTab: "Paste token",
+    serverLabel: "Server address",
+    serverHint: "Leave empty to use this site's address in a browser; required in the app (e.g. http://IP:9091)",
+    nameLabel: "Username",
+    namePlaceholder: "A name for the account (1-20 chars, cannot change later)",
+    createBtn: "Create account",
+    webOnlyNote: "Accounts can only be created on the web. On desktop / Android, create one in a browser first, then paste the token here.",
+    tokenTitle: "Account created",
+    tokenNameLabel: "Username",
+    tokenWarn: "Save your login token now — it is shown only this once and cannot be viewed again. If lost, create a new account.",
+    copy: "Copy",
+    copied: "Copied",
+    confirmBtn: "I've saved it — enter Polyphony",
+    loginLabel: "Login token",
+    loginPlaceholder: "Paste a token starting with poly_",
+    loginBtn: "Verify & sign in",
+    errNameTaken: "That username is taken — try another",
+    errNameInvalid: "Username must be 1-20 characters",
+    errInvalidToken: "Token is invalid or expired",
+    errNetwork: "Cannot reach the server — check the address",
+    errWebOnly: "Accounts can only be created on the web",
+  },
+
+  topbar: {
+    logout: "Sign out",
+    logoutConfirm: "Signing out clears the token on this device. Continue?",
+  },
+
   roomHeader: {
     room: "Room:",
     roomNamePlaceholder: "Room name",
