@@ -33,6 +33,6 @@
 ```bash
 bash setup.sh            # client/ + server/ 一次性安装
 npm run dev:all          # Vite :5173 + 协同服务 :3001
-cd e2e && npx playwright test   # 本地 UI 回归(38 用例,不进 CI)
+cd e2e && npx playwright test   # 本地 UI 回归(41 用例,不进 CI)
 docker compose up -d     # 本机起一个 all-in-one(:9091)
 ```
