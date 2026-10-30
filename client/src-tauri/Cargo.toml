@@ -1,8 +1,13 @@
 [package]
 name = "polyphony"
-version = "3.3.0"
+version = "3.3.1"
 description = "复调 Polyphony 桌面端"
 edition = "2021"
+
+# debug 构建(APK 侧载场景)剥离 DWARF 调试符号:libpolyphony_lib.so 117MB → ~20MB,
+# 整包 126MB → ~30MB(ADR #6 的 debug 直装路线保留,体积代价消除)
+[profile.dev]
+strip = "debuginfo"
 
 [lib]
 name = "polyphony_lib"

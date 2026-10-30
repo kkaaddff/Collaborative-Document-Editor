@@ -3,6 +3,12 @@
 本文件记录面向用户的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [3.3.1] - 2026-10-31
+
+### 变更
+
+- **APK 瘦身**:`[profile.dev] strip = "debuginfo"` 剥离 Rust debug 库的 DWARF 调试符号——`libpolyphony_lib.so` 117MB → ~20MB,整包 126MB → ~30MB(v3.0 起一直 126MB 的根因,ADR #6 修订)。
+
 ## [3.3.0] - 2026-10-30
 
 账号 Token 体系 + 首页双栏一屏重构。**破坏性变更:WS 与上传强制 token 鉴权,v3.2 及更早的客户端将无法连接,请重装新版。**

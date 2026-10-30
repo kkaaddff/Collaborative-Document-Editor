@@ -58,3 +58,6 @@ next-env.d.ts
 
 # 内部记忆(含运维拓扑,不入公开仓库)
 /.claude/
+
+# 本机凭据(账号 token,绝不入库)
+/secrets/
