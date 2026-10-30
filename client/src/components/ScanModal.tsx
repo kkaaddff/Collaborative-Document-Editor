@@ -7,6 +7,7 @@ import {
   nativeScanQr,
   stopStream,
 } from "@/platform/scanQr";
+import { useT } from "@/i18n";
 
 interface ScanModalProps {
   onResult: (text: string) => void;
@@ -15,6 +16,7 @@ interface ScanModalProps {
 
 export function ScanModal({ onResult, onClose }: ScanModalProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const { t } = useT();
   const [error, setError] = useState("");
   const [waitingNative] = useState(hasNativeScanner());
 
@@ -74,7 +76,7 @@ export function ScanModal({ onResult, onClose }: ScanModalProps) {
         raf = requestAnimationFrame(tick);
       } catch (e) {
         setError(
-          e instanceof Error ? e.message : "无法访问摄像头，请检查权限"
+          e instanceof Error ? e.message : t("scanModal.cameraFallback")
         );
       }
     })();
@@ -84,7 +86,7 @@ export function ScanModal({ onResult, onClose }: ScanModalProps) {
       cancelAnimationFrame(raf);
       stopStream(stream);
     };
-  }, [waitingNative, onResult]);
+  }, [waitingNative, onResult, t]);
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center p-4">
@@ -92,29 +94,28 @@ export function ScanModal({ onResult, onClose }: ScanModalProps) {
         <div className="text-center space-y-4">
           <p className="text-red-400 text-sm">{error}</p>
           <p className="text-gray-400 text-xs leading-relaxed">
-            浏览器扫码需 HTTPS 环境；直连 http://IP 时请用系统相机扫码，
-            或在 App 内使用。
+            {t("scanModal.httpsHint")}
           </p>
           <button
             onClick={onClose}
             className="px-6 py-2 rounded-lg bg-white text-gray-900 text-sm font-medium"
           >
-            知道了
+            {t("scanModal.gotIt")}
           </button>
         </div>
       ) : waitingNative ? (
         <div className="text-center space-y-4">
-          <p className="text-white text-sm">正在调起原生扫码...</p>
+          <p className="text-white text-sm">{t("scanModal.nativeStarting")}</p>
           <button
             onClick={onClose}
             className="px-8 py-2 rounded-lg bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
           >
-            取消
+            {t("common.cancel")}
           </button>
         </div>
       ) : (
         <>
-          <p className="text-white text-sm mb-4">将二维码对准取景框</p>
+          <p className="text-white text-sm mb-4">{t("scanModal.aim")}</p>
           <div className="w-full max-w-sm aspect-square rounded-2xl overflow-hidden border-2 border-white/30">
             <video
               ref={videoRef}
@@ -127,7 +128,7 @@ export function ScanModal({ onResult, onClose }: ScanModalProps) {
             onClick={onClose}
             className="mt-6 px-8 py-2 rounded-lg bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors"
           >
-            取消
+            {t("common.cancel")}
           </button>
         </>
       )}

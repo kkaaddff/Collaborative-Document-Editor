@@ -85,7 +85,8 @@ export function removeRecentRoom(code: string): void {
 // 同标签页写入通知（storage 事件只跨标签页触发，本页写完要自己广播）
 const sameTabBus = new EventTarget();
 
-function listenKey(key: string, onChange: () => void): () => void {
+/** 订阅某个 localStorage key 的变化（同标签页 + 跨标签页）；i18n 等模块复用。 */
+export function listenKey(key: string, onChange: () => void): () => void {
   const onBus = () => onChange();
   const onStorage = (e: StorageEvent) => {
     if (e.key === null || e.key === key) onChange();

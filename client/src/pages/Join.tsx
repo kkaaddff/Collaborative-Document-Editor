@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { saveServer } from "@/lib/serverConfig";
 import { getSavedUsername } from "@/lib/storage";
+import { useT } from "@/i18n";
 
 export default function Join() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [message, setMessage] = useState("正在进入房间...");
+  const { t } = useT();
+  const [message, setMessage] = useState(() => t("join.entering"));
 
   useEffect(() => {
     const server = searchParams.get("server");
@@ -28,10 +30,10 @@ export default function Join() {
         replace: true,
       });
     } else {
-      setMessage("请先设置用户名，加入房间");
+      setMessage(t("join.needName"));
       navigate(`/?join=${code}`, { replace: true });
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, t]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">

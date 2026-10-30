@@ -1,13 +1,14 @@
-// 桌面托盘桥：最近房间推给 Rust 重建菜单；订阅托盘动作导航。
+// 桌面托盘桥：最近房间 + 当前语言推给 Rust 重建菜单；订阅托盘动作导航。
 // 仅在 isTauri() 为真时调用（Web 下 invoke 无接收端）。
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { RecentRoom } from "@/types";
 
-/** 最近房间变化时推给 Rust 重建托盘菜单（最多 5 条，Rust 侧同样截断）。 */
-export function pushRecentRooms(rooms: RecentRoom[]): void {
+/** 最近房间/语言变化时推给 Rust 重建托盘菜单（最多 5 条，Rust 侧同样截断）。 */
+export function pushRecentRooms(rooms: RecentRoom[], locale: string): void {
   void invoke("set_recent_rooms", {
     rooms: rooms.slice(0, 5).map(({ code, name }) => ({ code, name })),
+    locale,
   }).catch(console.error);
 }
 

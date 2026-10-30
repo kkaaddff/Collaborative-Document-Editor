@@ -14,13 +14,14 @@ export function generateRoomCode(): string {
   return code;
 }
 
-/** 相对时间格式化（中文，简版）。 */
-export function formatRelative(ts: number): string {
+/** 相对时间格式化（locale 感知，走标准 Intl.RelativeTimeFormat）。 */
+export function formatRelative(ts: number, locale: string): string {
   const diff = Date.now() - ts;
   const min = Math.floor(diff / 60000);
-  if (min < 1) return "刚刚";
-  if (min < 60) return `${min} 分钟前`;
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  if (min < 1) return rtf.format(0, "minute");
+  if (min < 60) return rtf.format(-min, "minute");
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} 小时前`;
-  return `${Math.floor(hr / 24)} 天前`;
+  if (hr < 24) return rtf.format(-hr, "hour");
+  return rtf.format(-Math.floor(hr / 24), "day");
 }

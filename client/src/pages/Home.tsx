@@ -10,6 +10,7 @@ import {
 import { generateRoomCode, formatRelative } from "@/lib/roomCode";
 import { getServerBase, saveServer } from "@/lib/serverConfig";
 import { parseJoinPayload } from "@/lib/qr";
+import { useT } from "@/i18n";
 import { QrModal } from "@/components/QrModal";
 import { ScanModal } from "@/components/ScanModal";
 import { isDesktopTauri } from "@/platform";
@@ -21,6 +22,7 @@ type OnlineRoom = { code: string; userCount: number };
 export default function Home() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { t, locale } = useT();
 
   // 用户名：localStorage 持久化、创建/加入共用、预填
   const [userName, setUserName] = useLocalStorageState<string>(USERNAME_KEY, "");
@@ -40,7 +42,7 @@ export default function Home() {
 
   const resolveName = () => {
     const n = userName.trim();
-    return n || `用户${Math.floor(Math.random() * 1000)}`;
+    return n || t("common.guestName", { n: Math.floor(Math.random() * 1000) });
   };
 
   // 统一进入房间：记录最近房间 + 跳转
@@ -52,13 +54,13 @@ export default function Home() {
       setRecentRooms(getRecentRooms());
       navigate(`/editor?code=${code}&name=${encodeURIComponent(resolveName())}`);
     },
-    [userName]
+    [userName, t]
   );
 
   // 创建新文档（与加入共用用户名校验，行为一致）
   const handleCreateNew = () => {
     if (!userName.trim()) {
-      alert("请输入用户名");
+      alert(t("home.alertNeedUsername"));
       document.getElementById("userName")?.focus();
       return;
     }
@@ -70,12 +72,12 @@ export default function Home() {
     e.preventDefault();
     const code = roomCode.trim().toUpperCase();
     if (!code) {
-      alert("请输入房间代码");
+      alert(t("home.alertNeedRoomCode"));
       document.getElementById("roomCode")?.focus();
       return;
     }
     if (!userName.trim()) {
-      alert("请输入用户名");
+      alert(t("home.alertNeedUsername"));
       document.getElementById("userName")?.focus();
       return;
     }
@@ -87,13 +89,13 @@ export default function Home() {
     setScanOpen(false);
     const payload = parseJoinPayload(text);
     if (!payload) {
-      alert("未识别到有效的房间二维码");
+      alert(t("home.alertInvalidQr"));
       return;
     }
     if (payload.server) saveServer(payload.server);
     if (!userName.trim()) {
       setRoomCode(payload.code);
-      alert("已识别房间，请填写用户名后加入");
+      alert(t("home.alertQrNeedUsername"));
       return;
     }
     enterRoom(payload.code);
@@ -144,8 +146,8 @@ export default function Home() {
   // 桌面：最近房间 → 托盘菜单（菜单即达；托盘为桌面专属能力）
   useEffect(() => {
     if (!isDesktopTauri()) return;
-    pushRecentRooms(recentRooms);
-  }, [recentRooms]);
+    pushRecentRooms(recentRooms, locale);
+  }, [recentRooms, locale]);
 
   // 桌面：托盘动作（新建/直达房间）→ 导航
   useEffect(() => {
@@ -171,10 +173,10 @@ export default function Home() {
         {/* 标题区域 */}
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            复调 Polyphony
+            {t("common.appName")}
           </h1>
           <p className="text-lg text-gray-600">
-            Many voices. One score. —— 实时协同编辑，支持多用户同时编写文档
+            {t("common.tagline")} —— {t("home.subtitle")}
           </p>
           {/* 服务器直连状态：绿=已连 红=不可达 灰=探测中 */}
           <div className="flex items-center justify-center gap-2 mt-4 text-sm">
@@ -194,7 +196,7 @@ export default function Home() {
               to="/settings"
               className="text-blue-600 hover:text-blue-700 hover:underline shrink-0"
             >
-              设置
+              {t("home.settingsLink")}
             </Link>
           </div>
         </div>
@@ -202,14 +204,14 @@ export default function Home() {
         {/* 服务器不可达时的直连引导（Web 跨源/App 未配置场景） */}
         {serverOk === false && (
           <div className="mb-6 rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-800">
-            无法连接协同服务器。若服务部署在其他地址，请
+            {t("home.serverUnreachableBefore")}
             <Link
               to="/settings"
               className="font-semibold underline underline-offset-2"
             >
-              前往设置
+              {t("home.serverUnreachableLink")}
             </Link>
-            配置直连地址（如 http://IP:端口）后使用。
+            {t("home.serverUnreachableAfter")}
           </div>
         )}
 
@@ -221,14 +223,14 @@ export default function Home() {
               htmlFor="userName"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              用户名
+              {t("home.username")}
             </label>
             <input
               type="text"
               id="userName"
               value={userName}
               onChange={(e) => setUserName(e.target.value)}
-              placeholder="输入您的用户名（下次自动带出）"
+              placeholder={t("home.usernamePlaceholder")}
               maxLength={20}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
@@ -237,42 +239,38 @@ export default function Home() {
           {/* 创建新文档 */}
           <div className="border-b border-gray-200 pb-8">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              创建新文档
+              {t("home.createTitle")}
             </h2>
-            <p className="text-gray-600 mb-6">
-              快速创建一个新的协同文档，系统会自动生成房间代码
-            </p>
+            <p className="text-gray-600 mb-6">{t("home.createDesc")}</p>
 
             <button
               onClick={handleCreateNew}
               className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-4 px-6 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              创建新文档
+              {t("home.createBtn")}
             </button>
           </div>
 
           {/* 加入已有文档 */}
           <div>
             <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              加入已有文档
+              {t("home.joinTitle")}
             </h2>
-            <p className="text-gray-600 mb-6">
-              输入房间代码加入现有文档，或从下方列表直接进入
-            </p>
+            <p className="text-gray-600 mb-6">{t("home.joinDesc")}</p>
             <form onSubmit={handleJoinRoom} className="space-y-4">
               <div>
                 <label
                   htmlFor="roomCode"
                   className="block text-sm font-medium text-gray-700 mb-2"
                 >
-                  房间代码
+                  {t("home.roomCode")}
                 </label>
                 <input
                   type="text"
                   id="roomCode"
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder="输入 8 位房间代码"
+                  placeholder={t("home.roomCodePlaceholder")}
                   maxLength={8}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
@@ -283,15 +281,15 @@ export default function Home() {
                   type="submit"
                   className="flex-1 bg-gray-900 text-white font-semibold py-4 px-6 rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
-                  加入文档
+                  {t("home.joinBtn")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setScanOpen(true)}
-                  title="扫房间二维码直接加入"
+                  title={t("home.scanBtnTitle")}
                   className="px-5 py-4 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
                 >
-                  扫码加入
+                  {t("home.scanBtn")}
                 </button>
               </div>
             </form>
@@ -303,11 +301,11 @@ export default function Home() {
           {/* 我的最近房间 */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <span>🕘</span> 我的最近房间
+              <span>🕘</span> {t("home.recentTitle")}
             </h3>
             {recentRooms.length === 0 ? (
               <p className="text-sm text-gray-400 py-6 text-center">
-                还没有访问过的房间
+                {t("home.recentEmpty")}
               </p>
             ) : (
               <ul className="space-y-2">
@@ -319,25 +317,25 @@ export default function Home() {
                         className="flex-1 flex items-center gap-2 text-left min-w-0"
                       >
                         <span className="font-medium text-gray-900 truncate">
-                          {room.name || "未命名文档"}
+                          {room.name || t("common.unnamedDoc")}
                         </span>
                         <code className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono shrink-0">
                           {room.code}
                         </code>
                         <span className="text-xs text-gray-400 shrink-0">
-                          {formatRelative(room.lastUsed)}
+                          {formatRelative(room.lastUsed, locale)}
                         </span>
                       </button>
                       <button
                         onClick={() => setQrFor(room.code)}
-                        title="显示二维码"
+                        title={t("home.showQrTitle")}
                         className="text-gray-300 hover:text-blue-500 px-1 leading-none"
                       >
                         ▦
                       </button>
                       <button
                         onClick={() => handleRemoveRecent(room.code)}
-                        title="移出列表"
+                        title={t("home.removeRecentTitle")}
                         className="text-gray-300 hover:text-red-500 px-1 text-lg leading-none"
                       >
                         ×
@@ -352,11 +350,11 @@ export default function Home() {
           {/* 服务器在线房间 */}
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <span>🟢</span> 服务器在线房间
+              <span>🟢</span> {t("home.onlineTitle")}
             </h3>
             {onlineRooms.length === 0 ? (
               <p className="text-sm text-gray-400 py-6 text-center">
-                当前没有在线房间
+                {t("home.onlineEmpty")}
               </p>
             ) : (
               <ul className="space-y-2">
@@ -371,15 +369,15 @@ export default function Home() {
                           {room.code}
                         </code>
                         <span className="font-medium text-gray-900 truncate">
-                          {nameByCode.get(room.code) || "在线房间"}
+                          {nameByCode.get(room.code) || t("common.onlineRoom")}
                         </span>
                         <span className="ml-auto text-xs text-green-600 shrink-0">
-                          {room.userCount} 人在线
+                          {t("home.nOnline", { n: room.userCount })}
                         </span>
                       </button>
                       <button
                         onClick={() => setQrFor(room.code)}
-                        title="显示二维码"
+                        title={t("home.showQrTitle")}
                         className="text-gray-300 hover:text-blue-500 px-1 leading-none"
                       >
                         ▦
@@ -408,26 +406,26 @@ export default function Home() {
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-lg p-6 shadow-lg">
             <div className="text-3xl mb-3">🔒</div>
-            <h3 className="font-semibold text-gray-900 mb-2">实时同步</h3>
-            <p className="text-sm text-gray-600">
-              基于 Yjs CRDT，多人并发编辑自动收敛、无冲突
-            </p>
+            <h3 className="font-semibold text-gray-900 mb-2">
+              {t("home.featureSyncTitle")}
+            </h3>
+            <p className="text-sm text-gray-600">{t("home.featureSyncDesc")}</p>
           </div>
 
           <div className="bg-white rounded-lg p-6 shadow-lg">
             <div className="text-3xl mb-3">⚡</div>
-            <h3 className="font-semibold text-gray-900 mb-2">富文本协同</h3>
-            <p className="text-sm text-gray-600">
-              表格、图片、代码块、列表，多人同时编辑实时可见
-            </p>
+            <h3 className="font-semibold text-gray-900 mb-2">
+              {t("home.featureRichTitle")}
+            </h3>
+            <p className="text-sm text-gray-600">{t("home.featureRichDesc")}</p>
           </div>
 
           <div className="bg-white rounded-lg p-6 shadow-lg">
             <div className="text-3xl mb-3">🏠</div>
-            <h3 className="font-semibold text-gray-900 mb-2">房间管理</h3>
-            <p className="text-sm text-gray-600">
-              最近房间一键回归，房间可命名、用户名自动记住
-            </p>
+            <h3 className="font-semibold text-gray-900 mb-2">
+              {t("home.featureRoomsTitle")}
+            </h3>
+            <p className="text-sm text-gray-600">{t("home.featureRoomsDesc")}</p>
           </div>
         </div>
       </div>

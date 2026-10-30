@@ -7,20 +7,28 @@ import "@/lib/fixTableCopy"; // 修复表格无法拷贝（给 TableNode 补 exp
 import { useCollaboration } from "@/lib/useCollaboration";
 import { getServerBase } from "@/lib/serverConfig";
 import { upsertRecentRoom } from "@/lib/storage";
+import { useT } from "@/i18n";
 import { createEditorPlugins } from "@/components/editorConfig";
 import { RoomHeader } from "@/components/RoomHeader";
 import { UsersPanel } from "@/components/UsersPanel";
 import { User } from "@/types";
 
+/** useCollaboration 置出的稳定错误码 → 文案键（渲染层翻译）。 */
+const COLLAB_ERROR_KEYS: Record<string, "editor.collabError" | "editor.connectionClosed"> = {
+  ERR_COLLAB_CONNECT: "editor.collabError",
+  ERR_CONNECTION_CLOSED: "editor.connectionClosed",
+};
+
 export default function Editor() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useT();
 
   const roomCode = useMemo(
     () => searchParams.get("code")?.toUpperCase() ?? "",
     [searchParams]
   );
-  const userName = searchParams.get("name") || "匿名用户";
+  const userName = searchParams.get("name") || t("common.anonymous");
   const [userId] = useState(
     () => `user-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
   );
@@ -96,20 +104,22 @@ export default function Editor() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "上传失败");
+        throw new Error(errorData.error || "upload failed");
       }
 
       const data = await response.json();
       // 返回完整的 URL
       return `${baseUrl}${data.url}`;
     } catch (error) {
-      console.error("图片上传失败:", error);
+      console.error("image upload failed:", error);
       alert(
-        `图片上传失败: ${error instanceof Error ? error.message : "未知错误"}`
+        t("editor.uploadFail", {
+          msg: error instanceof Error ? error.message : t("editor.unknownError"),
+        })
       );
       throw error;
     }
-  }, []);
+  }, [t]);
 
   // 插件数组只在 upload handler 变化时重建（handler 已 useCallback，实际稳定）
   const plugins = useMemo(
@@ -133,7 +143,11 @@ export default function Editor() {
 
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 px-6 py-4">
-          <p className="text-red-700 dark:text-red-400">{error}</p>
+          <p className="text-red-700 dark:text-red-400">
+            {COLLAB_ERROR_KEYS[error]
+              ? t(COLLAB_ERROR_KEYS[error])
+              : error}
+          </p>
         </div>
       )}
 
@@ -142,10 +156,10 @@ export default function Editor() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg flex-1 overflow-hidden flex flex-col">
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                文档内容
+                {t("editor.docContent")}
               </span>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {content.length} 字符
+                {t("editor.charCount", { n: content.length })}
               </span>
             </div>
             <div className="flex-1 overflow-auto">

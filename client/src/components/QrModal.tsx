@@ -1,6 +1,7 @@
 // 二维码弹层：房间码 → Web join URL，canvas 渲染；点遮罩/ESC/按钮关闭。
 import { useEffect, useRef } from "react";
 import { buildJoinUrl, renderQr } from "@/lib/qr";
+import { useT } from "@/i18n";
 
 interface QrModalProps {
   code: string;
@@ -9,6 +10,7 @@ interface QrModalProps {
 }
 
 export function QrModal({ code, server, onClose }: QrModalProps) {
+  const { t } = useT();
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -33,10 +35,9 @@ export function QrModal({ code, server, onClose }: QrModalProps) {
         className="bg-white rounded-2xl shadow-2xl p-6 max-w-xs w-full text-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="font-semibold text-gray-900 mb-1">扫码进房</h3>
+        <h3 className="font-semibold text-gray-900 mb-1">{t("qrModal.title")}</h3>
         <p className="text-xs text-gray-500 mb-4">
-          手机相机或 App 扫码，直接加入{" "}
-          <code className="font-mono text-gray-700">{code}</code>
+          {t("qrModal.desc", { code })}{" "}
         </p>
         <div className="flex justify-center">
           <canvas
@@ -51,7 +52,7 @@ export function QrModal({ code, server, onClose }: QrModalProps) {
           onClick={onClose}
           className="mt-4 w-full py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-700 transition-colors"
         >
-          关闭
+          {t("common.close")}
         </button>
       </div>
     </div>

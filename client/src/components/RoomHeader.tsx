@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { QrModal } from "@/components/QrModal";
 import { getServerBase } from "@/lib/serverConfig";
+import { useT } from "@/i18n";
 
 interface RoomHeaderProps {
   roomCode: string;
@@ -18,6 +19,7 @@ export function RoomHeader({
   onRename,
   onLeave,
 }: RoomHeaderProps) {
+  const { t } = useT();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [showQr, setShowQr] = useState(false);
@@ -47,9 +49,9 @@ export function RoomHeader({
         document.execCommand("copy");
         ta.remove();
       }
-      alert("房间代码已复制到剪贴板");
+      alert(t("roomHeader.copyOk"));
     } catch {
-      alert(`复制失败，请手动复制房间代码：${roomCode}`);
+      alert(t("roomHeader.copyFail", { code: roomCode }));
     }
   };
 
@@ -57,11 +59,11 @@ export function RoomHeader({
     <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
       <div className="flex items-center space-x-4">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-          复调
+          {t("common.appName")}
         </h1>
         <div className="flex items-center space-x-2">
           <span className="text-sm text-gray-600 dark:text-gray-400">
-            房间:
+            {t("roomHeader.room")}
           </span>
           {editing ? (
             <input
@@ -80,16 +82,16 @@ export function RoomHeader({
               }}
               onBlur={commitRename}
               maxLength={40}
-              placeholder="输入房间名"
+              placeholder={t("roomHeader.roomNamePlaceholder")}
               className="px-2 py-1 rounded text-sm border border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 dark:text-white bg-white dark:bg-gray-700 max-w-[12rem]"
             />
           ) : (
             <button
               onClick={startRename}
-              title="点击重命名房间"
+              title={t("roomHeader.renameTitle")}
               className="text-sm font-semibold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate max-w-[12rem]"
             >
-              {roomName || "未命名文档"}
+              {roomName || t("common.unnamedDoc")}
             </button>
           )}
           <code className="bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded text-sm font-mono text-gray-900 dark:text-white">
@@ -99,14 +101,14 @@ export function RoomHeader({
             onClick={copyRoomCode}
             className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors"
           >
-            复制
+            {t("roomHeader.copy")}
           </button>
           <button
             onClick={() => setShowQr(true)}
-            title="显示房间二维码（手机扫码直接加入）"
+            title={t("roomHeader.qrBtnTitle")}
             className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
           >
-            二维码
+            {t("roomHeader.qrBtn")}
           </button>
         </div>
       </div>
@@ -119,7 +121,7 @@ export function RoomHeader({
             }`}
           />
           <span className="text-sm text-gray-600 dark:text-gray-400">
-            {isConnected ? "已连接" : "未连接"}
+            {isConnected ? t("roomHeader.connected") : t("roomHeader.disconnected")}
           </span>
         </div>
 
@@ -127,7 +129,7 @@ export function RoomHeader({
           onClick={onLeave}
           className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
         >
-          退出房间
+          {t("roomHeader.leave")}
         </button>
       </div>
 

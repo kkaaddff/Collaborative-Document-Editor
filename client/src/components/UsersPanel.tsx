@@ -1,11 +1,13 @@
 // 在线用户侧栏：awareness presence 列表（头像色点 + 用户名）。
 import type { User } from "@/types";
+import { useT } from "@/i18n";
 
 export function UsersPanel({ users }: { users: User[] }) {
+  const { t } = useT();
   return (
     <div className="w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-6 overflow-y-auto">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-        在线用户 ({users.length})
+        {t("usersPanel.online", { n: users.length })}
       </h2>
 
       <div className="space-y-3">

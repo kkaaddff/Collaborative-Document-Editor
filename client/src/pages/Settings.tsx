@@ -1,8 +1,9 @@
-// 设置页：服务器直连地址配置（CS 架构核心入口）。
+// 设置页：语言偏好 + 服务器直连地址配置（CS 架构核心入口）。
 // 保存后全端生效（WS 协同 / 图片上传 / 在线房间均走此地址）；留空则 Web 回落同源。
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { getSavedServer, saveServer } from "@/lib/serverConfig";
+import { useLocalePref, useT, type LocalePref } from "@/i18n";
 
 type TestResult =
   | { ok: true; latency: number; rooms: number; users: number }
@@ -17,14 +18,16 @@ function withScheme(url: string): string {
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [url, setUrl] = useState(getSavedServer());
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<TestResult | null>(null);
+  const [localePref, setLocalePref] = useLocalePref();
 
   const test = async () => {
     const base = withScheme(url);
     if (!base) {
-      setResult({ ok: false, message: "请先输入服务器地址" });
+      setResult({ ok: false, message: t("settings.needUrl") });
       return;
     }
     setUrl(base);
@@ -50,7 +53,7 @@ export default function Settings() {
     } catch (e) {
       setResult({
         ok: false,
-        message: e instanceof Error ? e.message : "连接失败",
+        message: e instanceof Error ? e.message : t("settings.connectFail"),
       });
     } finally {
       setTesting(false);
@@ -68,35 +71,69 @@ export default function Settings() {
     setResult(null);
   };
 
+  const localeOptions: Array<{ value: LocalePref; label: string }> = [
+    { value: "auto", label: t("settings.languageAuto") },
+    { value: "zh", label: t("settings.languageZh") },
+    { value: "en", label: t("settings.languageEn") },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-xl w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">设置</h1>
-          <p className="text-gray-600">配置协同服务器的直连地址</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            {t("settings.title")}
+          </h1>
+          <p className="text-gray-600">{t("settings.subtitle")}</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8 space-y-6">
+          {/* 界面语言：默认跟随系统，三选一即时生效 */}
+          <div>
+            <span className="block text-sm font-medium text-gray-700 mb-2">
+              {t("settings.languageSection")}
+            </span>
+            <div className="flex gap-2" role="radiogroup" aria-label={t("settings.languageSection")}>
+              {localeOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={localePref === opt.value}
+                  onClick={() => setLocalePref(opt.value)}
+                  className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium border transition-colors ${
+                    localePref === opt.value
+                      ? "bg-blue-50 border-blue-400 text-blue-700"
+                      : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label
               htmlFor="serverUrl"
               className="block text-sm font-medium text-gray-700 mb-2"
             >
-              服务器地址
+              {t("settings.serverSection")}
             </label>
             <input
               type="text"
               id="serverUrl"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              placeholder="http://192.168.1.10:9091 或 https://docs.example.com"
+              placeholder={t("settings.serverPlaceholder")}
               spellCheck={false}
               autoComplete="off"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono text-sm"
             />
             <p className="text-xs text-gray-400 mt-2">
-              协同（WS）、图片上传、在线房间列表都走这个地址；留空时浏览器版回落当前站点同源。
-              App 首次使用建议先测试连接再保存。
+              {t("settings.serverHint1")}
+              <br />
+              {t("settings.serverHint2")}
             </p>
           </div>
 
@@ -110,11 +147,14 @@ export default function Settings() {
             >
               {result.ok ? (
                 <span>
-                  ✓ 连接成功：{result.latency}ms · {result.rooms} 个房间 ·{" "}
-                  {result.users} 人在线
+                  {t("settings.testOk", {
+                    ms: result.latency,
+                    rooms: result.rooms,
+                    users: result.users,
+                  })}
                 </span>
               ) : (
-                <span>✗ 连接失败：{result.message}</span>
+                <span>{t("settings.testFail", { msg: result.message })}</span>
               )}
             </div>
           )}
@@ -125,13 +165,13 @@ export default function Settings() {
               disabled={testing}
               className="flex-1 py-3 px-6 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
-              {testing ? "测试中..." : "测试连接"}
+              {testing ? t("settings.testing") : t("settings.testBtn")}
             </button>
             <button
               onClick={save}
               className="flex-1 py-3 px-6 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg"
             >
-              保存并返回
+              {t("settings.saveBtn")}
             </button>
           </div>
 
@@ -140,7 +180,7 @@ export default function Settings() {
               onClick={reset}
               className="w-full text-sm text-gray-400 hover:text-red-500 transition-colors"
             >
-              清除已保存地址（恢复同源默认）
+              {t("settings.clearSaved")}
             </button>
           )}
         </div>
@@ -150,7 +190,7 @@ export default function Settings() {
             onClick={() => navigate("/")}
             className="text-sm text-gray-500 hover:text-gray-700"
           >
-            ← 返回首页
+            {t("settings.backHome")}
           </button>
         </div>
       </div>

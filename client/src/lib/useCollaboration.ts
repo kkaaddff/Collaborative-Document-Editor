@@ -153,11 +153,12 @@ export function useCollaboration({
     });
 
     provider.on("connection-close", () => {
-      setError("连接已关闭");
+      // 稳定错误码：由 Editor 渲染层翻译（避免闭包持 locale、provider 随语言重建断线）
+      setError("ERR_CONNECTION_CLOSED");
     });
 
     provider.on("connection-error", () => {
-      setError("无法连接实时协作服务");
+      setError("ERR_COLLAB_CONNECT");
     });
 
     yText.observe(handleTextUpdate);

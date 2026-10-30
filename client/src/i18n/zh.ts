@@ -1,0 +1,127 @@
+// 中文文案完本（类型的唯一来源；en.ts 必须 satisfies 同构，漏译编译期报错）。
+// 键名约定：<页面/组件>.<语义名>；插值用 {name} 占位。
+export const zh = {
+  common: {
+    appName: "复调",
+    tagline: "多个声部，一份总谱。",
+    close: "关闭",
+    cancel: "取消",
+    unnamedDoc: "未命名文档",
+    onlineRoom: "在线房间",
+    guestName: "用户{n}",
+    anonymous: "匿名用户",
+  },
+
+  home: {
+    subtitle: "实时协同编辑，支持多用户同时编写文档",
+    settingsLink: "设置",
+    username: "用户名",
+    usernamePlaceholder: "输入您的用户名（下次自动带出）",
+    createTitle: "创建新文档",
+    createDesc: "快速创建一个新的协同文档，系统会自动生成房间代码",
+    createBtn: "创建新文档",
+    joinTitle: "加入已有文档",
+    joinDesc: "输入房间代码加入现有文档，或从下方列表直接进入",
+    roomCode: "房间代码",
+    roomCodePlaceholder: "输入 8 位房间代码",
+    joinBtn: "加入文档",
+    scanBtn: "扫码加入",
+    scanBtnTitle: "扫房间二维码直接加入",
+    recentTitle: "我的最近房间",
+    recentEmpty: "还没有访问过的房间",
+    onlineTitle: "服务器在线房间",
+    onlineEmpty: "当前没有在线房间",
+    nOnline: "{n} 人在线",
+    showQrTitle: "显示二维码",
+    removeRecentTitle: "移出列表",
+    serverUnreachableBefore: "无法连接协同服务器。若服务部署在其他地址，请",
+    serverUnreachableLink: "前往设置",
+    serverUnreachableAfter: "配置直连地址（如 http://IP:端口）后使用。",
+    featureSyncTitle: "实时同步",
+    featureSyncDesc: "基于 Yjs CRDT，多人并发编辑自动收敛、无冲突",
+    featureRichTitle: "富文本协同",
+    featureRichDesc: "表格、图片、代码块、列表，多人同时编辑实时可见",
+    featureRoomsTitle: "房间管理",
+    featureRoomsDesc: "最近房间一键回归，房间可命名、用户名自动记住",
+    alertNeedUsername: "请输入用户名",
+    alertNeedRoomCode: "请输入房间代码",
+    alertInvalidQr: "未识别到有效的房间二维码",
+    alertQrNeedUsername: "已识别房间，请填写用户名后加入",
+  },
+
+  settings: {
+    title: "设置",
+    subtitle: "配置应用偏好与协同服务器直连地址",
+    serverSection: "服务器地址",
+    serverPlaceholder: "http://192.168.1.10:9091 或 https://docs.example.com",
+    serverHint1: "协同（WS）、图片上传、在线房间列表都走这个地址；留空时浏览器版回落当前站点同源。",
+    serverHint2: "App 首次使用建议先测试连接再保存。",
+    languageSection: "界面语言",
+    languageAuto: "跟随系统",
+    languageZh: "中文",
+    languageEn: "English",
+    testBtn: "测试连接",
+    testing: "测试中...",
+    saveBtn: "保存并返回",
+    clearSaved: "清除已保存地址（恢复同源默认）",
+    backHome: "← 返回首页",
+    needUrl: "请先输入服务器地址",
+    testOk: "✓ 连接成功：{ms}ms · {rooms} 个房间 · {users} 人在线",
+    testFail: "✗ 连接失败：{msg}",
+    connectFail: "连接失败",
+  },
+
+  editor: {
+    docContent: "文档内容",
+    connectionClosed: "连接已关闭",
+    charCount: "{n} 字符",
+    uploadFail: "图片上传失败：{msg}",
+    unknownError: "未知错误",
+    collabError: "无法连接实时协作服务",
+  },
+
+  join: {
+    entering: "正在进入房间...",
+    needName: "请先设置用户名，加入房间",
+  },
+
+  roomHeader: {
+    room: "房间:",
+    roomNamePlaceholder: "输入房间名",
+    renameTitle: "点击重命名房间",
+    copy: "复制",
+    copyOk: "房间代码已复制到剪贴板",
+    copyFail: "复制失败，请手动复制房间代码：{code}",
+    qrBtn: "二维码",
+    qrBtnTitle: "显示房间二维码（手机扫码直接加入）",
+    connected: "已连接",
+    disconnected: "未连接",
+    leave: "退出房间",
+  },
+
+  usersPanel: {
+    online: "在线用户 ({n})",
+  },
+
+  qrModal: {
+    title: "扫码进房",
+    desc: "手机相机或 App 扫码，直接加入 {code}",
+  },
+
+  scanModal: {
+    cameraFallback: "无法访问摄像头，请检查权限",
+    httpsHint: "浏览器扫码需 HTTPS 环境；直连 http://IP 时请用系统相机扫码，或在 App 内使用。",
+    gotIt: "知道了",
+    nativeStarting: "正在调起原生扫码...",
+    aim: "将二维码对准取景框",
+  },
+
+  errors: {
+    E_NO_FILE: "没有上传文件",
+    E_FILE_TYPE: "仅支持上传 jpg、jpeg、png、gif、webp 格式的图片",
+    E_FILE_SIZE: "文件大小不能超过 5MB",
+    E_UPLOAD: "图片上传失败",
+  },
+} as const;
+
+export type Dict = typeof zh;
