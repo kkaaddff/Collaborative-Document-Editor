@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 test.describe("首页渲染与服务器状态", () => {
   test("标题/用户名/房间码输入框就位，服务器连通显示绿点", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: "协同文档编辑器" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "复调 Polyphony" })).toBeVisible();
     await expect(page.locator("#userName")).toBeVisible();
     await expect(page.locator("#roomCode")).toBeVisible();
     // dev 环境 VITE_SERVER_URL=http://localhost:3001，health 可达 → 绿点

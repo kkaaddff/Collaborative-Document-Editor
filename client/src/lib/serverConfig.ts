@@ -3,7 +3,7 @@
 //        > 环境变量 VITE_SERVER_URL（仅 dev）> Web 同源 location.origin（反代部署）。
 // Tauri 侧持久化后续接 plugin-store（platform/store 适配器），Web 侧 localStorage。
 
-const SERVER_KEY = "coordination.server";
+const SERVER_KEY = "polyphony.server";
 
 function normalize(url: string): string {
   return url.trim().replace(/\/+$/, "");

@@ -1,11 +1,11 @@
 [package]
-name = "coordination"
-version = "3.0.0"
-description = "协同文档编辑器桌面端"
+name = "polyphony"
+version = "3.1.0"
+description = "复调 Polyphony 桌面端"
 edition = "2021"
 
 [lib]
-name = "coordination_lib"
+name = "polyphony_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

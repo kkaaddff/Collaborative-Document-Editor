@@ -27,7 +27,7 @@ This document collects the guardrails for anyone running autonomous or semi-auto
 - Use PascalCase for components and route groups, camelCase for hooks (`useCollaboration.ts`) and utilities, and UPPER_SNAKE_CASE only for environment variables.
 - Keep Tailwind utility classes inline in JSX and reserve `index.css` for design tokens.
 - Avoid mutating shared Yjs documents directly—go through the provider/hook in `client/src/lib/useCollaboration.ts` so CRDT updates are applied and broadcast correctly; route all Tauri-specific APIs through `client/src/platform/` instead of importing `@tauri-apps/*` from pages/components.
-- The local checkout path must stay ASCII (`coordination-v2`): an em-dash path breaks Android Gradle builds.
+- The local checkout path must stay ASCII (`polyphony`): an em-dash path breaks Android Gradle builds.
 
 ### Testing Guidelines
 - Automated unit tests are not yet configured; add coverage alongside new features. Place them adjacent to source in `__tests__/` and document the runner in the PR.

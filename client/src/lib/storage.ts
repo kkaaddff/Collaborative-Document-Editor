@@ -6,8 +6,8 @@ import { useCallback, useRef, useSyncExternalStore } from "react";
 import type { RecentRoom } from "@/types";
 
 // localStorage key（导出供 hook 调用方复用，避免魔法字符串）
-export const USERNAME_KEY = "coordination.username";
-const RECENT_ROOMS_KEY = "coordination.recentRooms";
+export const USERNAME_KEY = "polyphony.username";
+const RECENT_ROOMS_KEY = "polyphony.recentRooms";
 const MAX_RECENT_ROOMS = 20;
 
 /**

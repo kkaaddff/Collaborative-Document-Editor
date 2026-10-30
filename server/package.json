@@ -1,7 +1,7 @@
 {
-  "name": "coordination-server",
-  "version": "1.0.0",
-  "description": "WebSocket server for collaborative editing",
+  "name": "polyphony-server",
+  "version": "3.1.0",
+  "description": "Polyphony collaboration server (y-websocket relay + static hosting)",
   "main": "index.js",
   "type": "module",
   "scripts": {

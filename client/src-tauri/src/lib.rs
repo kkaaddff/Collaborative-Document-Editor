@@ -102,9 +102,9 @@ pub fn run() {
             .setup(|app| {
                 let handle = app.handle().clone();
                 let menu = build_menu(&handle, &[])?;
-                let tray = TrayIconBuilder::with_id("coordination-tray")
+                let tray = TrayIconBuilder::with_id("polyphony-tray")
                     .icon(handle.default_window_icon().unwrap().clone())
-                    .tooltip("协同文档编辑器")
+                    .tooltip("复调 Polyphony")
                     .menu(&menu)
                     .on_menu_event(|app, event| match event.id.as_ref() {
                         "new" => {

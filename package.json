@@ -1,7 +1,17 @@
 {
-  "name": "coordination-v2",
-  "version": "3.0.0",
+  "name": "polyphony",
+  "version": "3.1.0",
   "private": true,
+  "description": "复调 Polyphony —— Many voices. One score. 实时协同文档编辑（Yjs CRDT）",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kkaaddff/polyphony.git"
+  },
+  "homepage": "https://github.com/kkaaddff/polyphony#readme",
+  "bugs": "https://github.com/kkaaddff/polyphony/issues",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "npm --prefix client run dev",
     "build": "npm --prefix client run build",

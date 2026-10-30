@@ -171,10 +171,10 @@ export default function Home() {
         {/* 标题区域 */}
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
-            协同文档编辑器
+            复调 Polyphony
           </h1>
           <p className="text-lg text-gray-600">
-            实时协同编辑，支持多用户同时编写文档
+            Many voices. One score. —— 实时协同编辑，支持多用户同时编写文档
           </p>
           {/* 服务器直连状态：绿=已连 红=不可达 灰=探测中 */}
           <div className="flex items-center justify-center gap-2 mt-4 text-sm">

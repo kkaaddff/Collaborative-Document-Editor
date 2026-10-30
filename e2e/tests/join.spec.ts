@@ -7,7 +7,7 @@ test.describe("/join 分流", () => {
     await seedStorage(page, { username: "张三" });
     await page.goto("/join?code=abcd1234&server=http%3A%2F%2Flocalhost%3A3001");
     await expect(page).toHaveURL(/\/editor\?code=ABCD1234&name=%E5%BC%A0%E4%B8%89$/);
-    const saved = await page.evaluate(() => localStorage.getItem("coordination.server"));
+    const saved = await page.evaluate(() => localStorage.getItem("polyphony.server"));
     expect(saved).toBe("http://localhost:3001");
   });
 
@@ -26,7 +26,7 @@ test.describe("/join 分流", () => {
     await seedStorage(page, { username: "张三", server: "http://localhost:3001" });
     await page.goto("/join?code=EFGH5678");
     await expect(page).toHaveURL(/\/editor\?code=EFGH5678/);
-    const saved = await page.evaluate(() => localStorage.getItem("coordination.server"));
+    const saved = await page.evaluate(() => localStorage.getItem("polyphony.server"));
     expect(saved).toBe("http://localhost:3001");
   });
 

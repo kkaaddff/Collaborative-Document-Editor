@@ -1,6 +1,6 @@
 {
-  "name": "coordination-e2e",
-  "version": "3.0.0",
+  "name": "polyphony-e2e",
+  "version": "3.1.0",
   "private": true,
   "type": "module",
   "description": "本地 UI/E2E 测试（Playwright + 系统 Chrome）。仅本地运行，不接入 CI。",

@@ -113,7 +113,7 @@ export function useCollaboration({
     let persistence: IndexeddbPersistence | null = null;
     try {
       persistence = new IndexeddbPersistence(
-        `coordination-room-${roomCode}`,
+        `polyphony-room-${roomCode}`,
         doc
       );
     } catch {

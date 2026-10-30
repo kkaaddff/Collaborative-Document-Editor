@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Coordination",
-  "version": "3.0.0",
-  "identifier": "online.hengheng.coordination",
+  "productName": "Polyphony",
+  "version": "3.1.0",
+  "identifier": "online.hengheng.polyphony",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "协同文档编辑器",
+        "title": "复调 Polyphony",
         "width": 1280,
         "height": 840,
         "minWidth": 960,
@@ -28,8 +28,8 @@
     "active": true,
     "targets": "all",
     "category": "Productivity",
-    "shortDescription": "协同文档编辑器",
-    "longDescription": "实时协同文档编辑（Yjs CRDT）：桌面端支持托盘最近房间直达与离线缓存，可直连自建服务器。",
+    "shortDescription": "复调 · 实时协同文档编辑",
+    "longDescription": "复调 Polyphony —— Many voices. One score. 实时协同文档编辑（Yjs CRDT）：桌面端支持托盘最近房间直达与离线缓存，可直连自建服务器。",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -1,9 +1,9 @@
 // 共用工具：localStorage 预置、alert 捕获。
 // 注意 username 的存储格式：Home 走 useLocalStorageState（JSON.stringify），
 // recentRooms 为对象数组 —— 预置必须与真实写入格式一致。
-export const USERNAME_KEY = "coordination.username";
-export const RECENT_ROOMS_KEY = "coordination.recentRooms";
-export const SERVER_KEY = "coordination.server";
+export const USERNAME_KEY = "polyphony.username";
+export const RECENT_ROOMS_KEY = "polyphony.recentRooms";
+export const SERVER_KEY = "polyphony.server";
 
 type RecentRoomSeed = { code: string; name: string; lastUsed?: number };
 

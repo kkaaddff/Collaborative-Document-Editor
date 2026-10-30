@@ -44,7 +44,7 @@ test.describe("保存 / 清除 / 返回", () => {
     await page.getByRole("button", { name: "保存并返回" }).click();
     await expect(page).toHaveURL("/");
     await expect(page.getByText("http://localhost:3001").first()).toBeVisible();
-    const saved = await page.evaluate(() => localStorage.getItem("coordination.server"));
+    const saved = await page.evaluate(() => localStorage.getItem("polyphony.server"));
     expect(saved).toBe("http://localhost:3001");
   });
 
@@ -56,7 +56,7 @@ test.describe("保存 / 清除 / 返回", () => {
     await clear.click();
     await expect(clear).toBeHidden();
     await expect(page.locator("#serverUrl")).toHaveValue("");
-    const saved = await page.evaluate(() => localStorage.getItem("coordination.server"));
+    const saved = await page.evaluate(() => localStorage.getItem("polyphony.server"));
     expect(saved).toBeNull();
     await page.getByRole("button", { name: "保存并返回" }).click();
     // 清除后的回落：dev 环境取 VITE_SERVER_URL（client/.env.local = :3001）；
@@ -69,7 +69,7 @@ test.describe("保存 / 清除 / 返回", () => {
     await page.locator("#serverUrl").fill("http://1.2.3.4:9999");
     await page.getByRole("button", { name: "← 返回首页" }).click();
     await expect(page).toHaveURL("/");
-    const saved = await page.evaluate(() => localStorage.getItem("coordination.server"));
+    const saved = await page.evaluate(() => localStorage.getItem("polyphony.server"));
     expect(saved).toBeNull();
   });
 

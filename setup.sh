@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# 协同编辑器初始化脚本
+# 复调 Polyphony 初始化脚本
 
-echo "🎉 欢迎使用协同文档编辑器"
+echo "🎉 欢迎使用复调 Polyphony —— Many voices. One score."
 echo "================================"
 echo ""
 
