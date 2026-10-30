@@ -1,25 +1,29 @@
 // 编辑器：直达守卫、顶栏操作（复制/二维码/重命名/退出）、双端协同收敛。
-// 并行隔离：每个用例生成独立房间码，避免 awareness 人数互相串扰。
+// 并行隔离：每个用例独立账号 + 独立房间码（WS 强制 token 鉴权）。
 import { expect, test, type Page } from "@playwright/test";
+import { createAccount, seedStorage } from "./helpers";
 
 function uniqRoom(base: string): string {
   return (base + Math.random().toString(36).slice(2, 6)).toUpperCase().slice(0, 8);
 }
 
-async function openEditor(page: Page, code: string, name = "张三") {
+async function openEditor(page: Page, code: string, name = "张三", token?: string) {
+  if (token) await seedStorage(page, { token });
   await page.goto(`/editor?code=${code}&name=${encodeURIComponent(name)}`);
   await expect(page.getByText("已连接", { exact: true })).toBeVisible({ timeout: 15_000 });
 }
 
 test.describe("路由守卫与退出", () => {
   test("无 code 直达 → 弹回首页", async ({ page }) => {
+    const { token } = await createAccount();
+    await seedStorage(page, { token });
     await page.goto("/editor");
     await expect(page).toHaveURL("/");
   });
 
   test("退出房间 → 回首页", async ({ page }) => {
-    const code = uniqRoom("EXIT");
-    await openEditor(page, code);
+    const { token } = await createAccount();
+    await openEditor(page, uniqRoom("EXIT"), "张三", token);
     await page.getByRole("button", { name: "退出房间" }).click();
     await expect(page).toHaveURL("/");
   });
@@ -27,19 +31,21 @@ test.describe("路由守卫与退出", () => {
 
 test.describe("顶栏", () => {
   test("复制房间码：alert 反馈 + 剪贴板内容正确", async ({ page }) => {
+    const { token } = await createAccount();
     const code = uniqRoom("COPY");
     const dialogs: string[] = [];
     page.on("dialog", (d) => {
       dialogs.push(d.message());
       void d.accept();
     });
-    await openEditor(page, code);
+    await openEditor(page, code, "张三", token);
     await page.getByRole("button", { name: "复制" }).click();
     await expect.poll(() => dialogs).toContain("房间代码已复制到剪贴板");
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(code);
   });
 
   test("无 clipboard API（http 直连场景）：降级复制仍给出反馈", async ({ page }) => {
+    const { token } = await createAccount();
     const dialogs: string[] = [];
     page.on("dialog", (d) => {
       dialogs.push(d.message());
@@ -49,7 +55,7 @@ test.describe("顶栏", () => {
       // 模拟非安全上下文（http://IP）：navigator.clipboard 不存在
       Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
     });
-    await openEditor(page, uniqRoom("NOC"));
+    await openEditor(page, uniqRoom("NOC"), "张三", token);
     await page.getByRole("button", { name: "复制" }).click();
     // 不能无反馈/抛错：降级 execCommand 或手动复制提示
     await expect
@@ -58,8 +64,9 @@ test.describe("顶栏", () => {
   });
 
   test("二维码：URL 载荷含 code 与 server；ESC/遮罩/按钮三种关闭", async ({ page }) => {
+    const { token } = await createAccount();
     const code = uniqRoom("QRM");
-    await openEditor(page, code);
+    await openEditor(page, code, "张三", token);
     await page.getByRole("button", { name: "二维码" }).click();
     await expect(page.getByRole("heading", { name: "扫码进房" })).toBeVisible();
     await expect(
@@ -81,9 +88,10 @@ test.describe("顶栏", () => {
     await expect(page.getByRole("heading", { name: "扫码进房" })).toBeHidden();
   });
 
-  test("重命名：就地编辑 + Enter 提交，首页最近房间同步名称", async ({ page }) => {
+  test("重命名：就地编辑 + Enter 提交，首页我的房间同步名称", async ({ page }) => {
+    const { token } = await createAccount();
     const code = uniqRoom("REN");
-    await openEditor(page, code);
+    await openEditor(page, code, "张三", token);
     await page.getByRole("button", { name: "未命名文档" }).click();
     const input = page.getByPlaceholder("输入房间名");
     await input.fill("接口设计评审");
@@ -91,12 +99,15 @@ test.describe("顶栏", () => {
     await expect(page.getByRole("button", { name: "接口设计评审" })).toBeVisible();
 
     await page.getByRole("button", { name: "退出房间" }).click();
-    await expect(page.getByRole("button", { name: /接口设计评审/ })).toBeVisible();
+    // 服务端房间簿登记后首页展示(网络 + 500ms 防抖,放宽等待)
+    await expect(
+      page.getByRole("button", { name: /接口设计评审/ })
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test("重命名：Escape 放弃本次修改（保留已提交名）", async ({ page }) => {
-    const code = uniqRoom("ESC");
-    await openEditor(page, code);
+    const { token } = await createAccount();
+    await openEditor(page, uniqRoom("ESC"), "张三", token);
     // 先提交一个名字（顶栏名来自房间 meta，而非本地最近列表）
     await page.getByRole("button", { name: "未命名文档" }).click();
     const input = page.getByPlaceholder("输入房间名");
@@ -113,18 +124,19 @@ test.describe("顶栏", () => {
   });
 });
 
-test.describe("双端协同（真实 ws :3001）", () => {
+test.describe("双端协同（真实 ws :3001,同一账号两个浏览器上下文）", () => {
   // 双用户各用独立 browser context：同 context 双标签会共享 IndexedDB/BroadcastChannel，
   // y-websocket 的 awareness 归属会错位（离开广播要等 ~30s 过期兜底）——真实多用户
   // （不同设备/浏览器）不存在此现象，测试按真实场景隔离。
   test("A 输入 B 收到；在线用户数 2；改名跨端同步", async ({ browser }) => {
+    const { token } = await createAccount();
     const code = uniqRoom("SYNC");
     const ctxA = await browser.newContext();
     const ctxB = await browser.newContext();
     const a = await ctxA.newPage();
     const b = await ctxB.newPage();
-    await openEditor(a, code, "甲");
-    await openEditor(b, code, "乙");
+    await openEditor(a, code, "甲", token);
+    await openEditor(b, code, "乙", token);
 
     for (const p of [a, b]) {
       await expect(p.getByText("在线用户 (2)")).toBeVisible({ timeout: 15_000 });
@@ -151,13 +163,14 @@ test.describe("双端协同（真实 ws :3001）", () => {
   });
 
   test("B 退出后 A 的在线人数回落（独立 context，秒级）", async ({ browser }) => {
+    const { token } = await createAccount();
     const code = uniqRoom("LEAV");
     const ctxA = await browser.newContext();
     const ctxB = await browser.newContext();
     const a = await ctxA.newPage();
     const b = await ctxB.newPage();
-    await openEditor(a, code, "甲");
-    await openEditor(b, code, "乙");
+    await openEditor(a, code, "甲", token);
+    await openEditor(b, code, "乙", token);
     await expect(a.getByText("在线用户 (2)")).toBeVisible({ timeout: 15_000 });
     await b.close();
     // 跨设备场景：服务端按连接名单立即广播离开，无需等 awareness 过期

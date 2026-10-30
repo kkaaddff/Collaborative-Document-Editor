@@ -114,7 +114,7 @@ export default function Welcome() {
       <div className="max-w-xl w-full">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            {t("common.appName")}
+            {t("welcome.title")}
           </h1>
           <p className="text-sm text-gray-600">{t("welcome.subtitle")}</p>
         </div>

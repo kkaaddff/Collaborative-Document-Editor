@@ -99,8 +99,8 @@ export const zh = {
   welcome: {
     title: "欢迎使用复调",
     subtitle: "多个声部，一份总谱。—— 开始之前，先登录你的账号",
-    createTab: "创建账号",
-    loginTab: "粘贴 token 登录",
+    createTab: "新建账号",
+    loginTab: "已有账号 · 粘贴 token",
     serverLabel: "服务器地址",
     serverHint: "浏览器打开本站时留空即用当前地址；App 需填写（如 http://IP:9091）",
     nameLabel: "用户名",

@@ -16,16 +16,18 @@
 
 ---
 
-![双端实时协同](docs/img/screenshot-collab.png)
+![复调首页 · 双栏一屏](docs/img/screenshot-home.png)
 
-基于 [Yjs](https://github.com/yjs/yjs) CRDT 的实时协同富文本编辑器。一套 React 代码构建 **Web / 桌面(macOS·Windows·Linux)/ Android** 客户端;服务器是一个单容器 Node 服务,`docker compose up -d` 即完成自托管。手机**扫码直接进房**,断网可写、重连自动合并。
+基于 [Yjs](https://github.com/yjs/yjs) CRDT 的实时协同富文本编辑器。一套 React 代码构建 **Web / 桌面(macOS·Windows·Linux)/ Android** 客户端;服务器是一个单容器 Node 服务,`docker compose up -d` 即完成自托管。**账号 token 登录**(web 注册、全端通用),首页双栏一屏;手机**扫码直接进房**,断网可写、重连自动合并。
+
+![双端实时协同](docs/img/screenshot-collab.png)
 
 ## ✨ 特性
 
 - 🎼 **实时协同**——Yjs CRDT,多人并发编辑自动收敛、无冲突
 - 📝 **富文本**——MDX 编辑器:加粗/斜体、列表、引用、表格、代码块、图片、链接
-- 🚪 **房间系统**——8 位房间码创建/加入;最近房间、在线房间列表、在线用户感知(awareness)
-- 🔌 **服务器直连**——运行时配置服务器地址,无需重构建;内置连通性测试(延迟/房间数/在线人数)
+- 👤 **账号体系**——Web 端创建账号,token 一次性展示;桌面/Android 粘贴 token 登录;房间簿服务端同步,支持单个/批量退出
+- 🚪 **房间系统**——8 位房间码进入;我的房间(跨端同步)/在线房间双列表;在线用户感知(awareness)
 - 📱 **扫码进房**——房间二维码就是 Web URL,任何手机相机都能扫;App 内扫码走原生插件
 - 💾 **离线可写**——IndexedDB 房间级持久化,断网继续编辑,恢复后自动合并
 - 🖥 **桌面增强**——Tauri 2 托盘最近房间直达;Android arm64 安装包
@@ -47,7 +49,15 @@ curl http://127.0.0.1:9091/health
 # {"status":"ok","totalRooms":0,"totalUsers":0,...}
 ```
 
-上传图片持久化在具名卷 `polyphony-uploads` 中,重建容器不丢数据。
+上传图片持久化在具名卷 `polyphony-uploads`,账号数据(token 哈希 + 房间簿)在 `polyphony-data`,重建容器不丢数据。
+
+### 创建账号并登录
+
+1. 浏览器打开站点 → 首次进入「创建账号」:填用户名 → 创建;
+2. **token 仅展示这一次**(复制保管好,丢了只能重建账号)——确认后即登录;
+3. 桌面 / Android 客户端:同一引导页切到「已有账号 · 粘贴 token」,填服务器地址 + token 登录。
+
+> 协同 WS、图片上传均要求有效 token;进入房间仍需 8 位房间码(双凭据:token = 身份,房间码 = 房间准入)。
 
 <details>
 <summary><b> HTTPS / 反向代理(WebSocket 升级配置)</b></summary>
@@ -117,12 +127,17 @@ npm run dev:all         # 前端(Vite :5173) + WS 服务(:3001)
 
 ### HTTP 接口
 
-| 接口 | 说明 |
-|---|---|
-| `GET /health` | `{ status, totalRooms, totalUsers, rooms:[{code,userCount,lastActivity}] }` |
-| `POST /upload` | `multipart/form-data`,字段 `image`,≤5MB(jpg/png/gif/webp)→ `{url:"/uploads/<name>"}` |
-| `GET /uploads/*` | 静态图片 |
-| `ws://…/<房间码>` | y-websocket 协同通道 |
+| 接口 | 鉴权 | 说明 |
+|---|---|---|
+| `POST /auth/create` | 仅 Web/工具 | `{name}` → `{token, name}`;token **仅此一次**返回 |
+| `GET /auth/me` | Bearer | 校验 token → `{id, name}` |
+| `GET /rooms` | Bearer | 我的房间簿(含在线人数) |
+| `POST /rooms/enter` | Bearer | `{code,name}` 登记/改名 upsert |
+| `POST /rooms/leave` | Bearer | `{codes[]}` 批量退出 |
+| `GET /health` | 公开 | `{ status, totalRooms, totalUsers, rooms }` |
+| `POST /upload` | Bearer | `multipart/form-data`,字段 `image`,≤5MB → `{url:"/uploads/<name>"}` |
+| `GET /uploads/*` | 公开 | 静态图片 |
+| `ws://…/<房间码>?token=…` | token 参数 | y-websocket 协同通道,无效 token close(4001) |
 
 ## 📦 发布与 CI
 
@@ -131,9 +146,10 @@ npm run dev:all         # 前端(Vite :5173) + WS 服务(:3001)
 
 ## 🔒 安全须知(如实)
 
-- 房间码即凭据,服务端无鉴权——适合内网/受信小圈子,请勿存放敏感内容。
+- **双凭据模型**:token = 账号身份(服务端只存哈希),房间码 = 房间准入;二者缺一不可。无账号恢复机制——token 丢失只能重建账号,房间内容凭码仍可再进。
 - 直连为明文 `ws://`(Android 已开 cleartext);公网使用请套 HTTPS 反代(见上文配置)。
 - `/health` 会展示房间码与在线人数列表,介意暴露请在反代层屏蔽该路径。
+- 账号仅支持 Web 端创建(服务端按 Origin 拦截 Tauri 客户端);其余端一律粘贴 token。
 
 ## 🙏 致谢
 

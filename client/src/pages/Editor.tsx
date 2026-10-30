@@ -84,22 +84,20 @@ export default function Editor() {
     onRoomNameChange: setRoomName,
   });
 
-  // 共享房间名同步到本地「最近房间」快照与服务端房间簿，首页列表随之保鲜
+  // 共享房间名同步到本地「最近房间」快照与服务端房间簿，首页列表随之保鲜。
+  // 不做防抖:改名后立刻退出编辑器的场景,防抖定时器会被卸载取消导致房间名丢失
   useEffect(() => {
     if (!roomCode) return;
     if (roomName) {
       upsertRecentRoom({ code: roomCode, name: roomName });
     }
-    const id = window.setTimeout(() => {
-      authFetch(`${getServerBase()}/rooms/enter`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: roomCode, name: roomName }),
-      }).catch(() => {
-        /* 登记失败不打断编辑 */
-      });
-    }, 500); // 进入与改名共用，轻防抖
-    return () => window.clearTimeout(id);
+    authFetch(`${getServerBase()}/rooms/enter`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: roomCode, name: roomName }),
+    }).catch(() => {
+      /* 登记失败不打断编辑 */
+    });
   }, [roomCode, roomName]);
 
   const handleContentChange = useCallback(

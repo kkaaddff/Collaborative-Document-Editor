@@ -16,7 +16,7 @@
 
 挂载（`useEffect`，依赖 `roomCode`）：
 
-1. `getServerBase()` 运行时解析地址 → `new WebsocketProvider(wsUrl, roomCode, doc, { params: { userId } })`
+1. `getServerBase()` 运行时解析地址 → `new WebsocketProvider(wsUrl, roomCode, doc, { params: { userId, token } })`（v3.3 起服务端强制校验 token，无效连接 close(4001)）
 2. `IndexeddbPersistence` 离线库（失败静默跳过）
 3. observe 注册：yText（内容）、awareness `change`（用户列表）、yMeta（房间名）
 4. `awareness.setLocalState({ user })` 自我宣告

@@ -105,8 +105,9 @@ jobs:
           [ -n "$ok" ] || { echo "❌ health 检查失败"; fail=1; }
 
           if [ "$fail" -eq 0 ]; then
-            # 双客户端 CRDT 收敛冒烟（镜像自带脚本与依赖，容器内自环验证）
-            if ! docker exec polyphony node server/convergence-smoke.mjs ws://127.0.0.1:9091; then
+            # 双客户端 CRDT 收敛冒烟（镜像自带脚本与依赖，容器内自环验证；
+            # 传 HTTP base：脚本先建临时账号拿 token，再以 ?token= 连 WS）
+            if ! docker exec polyphony node server/convergence-smoke.mjs http://127.0.0.1:9091; then
               echo "❌ 收敛冒烟失败"; fail=1
             fi
           fi

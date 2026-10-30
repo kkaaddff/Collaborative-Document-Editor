@@ -1,6 +1,11 @@
-// 设置页：测试连接、协议头补全、保存/清除/返回。
+// 设置页：测试连接、协议头补全、保存/清除/返回（登录态之下）。
 import { expect, test } from "@playwright/test";
-import { seedStorage } from "./helpers";
+import { loginTestAccount, seedStorage } from "./helpers";
+
+test.beforeEach(async ({ page }) => {
+  // 设置页在登录守卫之后:全部用例先注入测试账号 token
+  await loginTestAccount(page);
+});
 
 test.describe("测试连接", () => {
   test("空地址点击：提示先输入", async ({ page }) => {
@@ -75,7 +80,7 @@ test.describe("保存 / 清除 / 返回", () => {
 
   test("首页「设置」入口可达", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: "设置" }).click();
+    await page.getByTitle("设置").click();
     await expect(page).toHaveURL("/settings");
     await expect(page.getByRole("heading", { name: "设置" })).toBeVisible();
   });

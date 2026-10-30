@@ -27,6 +27,9 @@
 | 21 | 公开文档不出现内网 IP/域名/路径 | 仓库公开于 GitHub，运维细节只留在私有 Gitea；git 历史不重写（无密钥，仅旧拓扑，接受残留） |
 | 22 | i18n 自研轻量方案（v3.2.0），不用 react-i18next | 仅 zh/en 两种、~90 条文案：zh.ts 完本类型 + en.ts `satisfies` 同构校验 + `useT()` 复用 storage.ts 的 useSyncExternalStore/跨标签页订阅，零依赖零包体积；标准库 ~40KB gzip 与双套心智模型不值。相对时间直接用 `Intl.RelativeTimeFormat`。服务端错误走稳定码（`E_FILE_TYPE` 等）客户端本地化，`error` 字段保留兼容旧客户端 |
 | 23 | 协同错误在 hook 内置稳定码、渲染层翻译 | `useT` 若进 useCollaboration 的事件闭包，locale 变化会重建 provider（全员断线）；稳定码（`ERR_COLLAB_CONNECT`）+ Editor 映射使文案随语言即时切换而连接不动 |
+| 24 | 账号体系（v3.3.0）：web 独占创建 + token 一次性展示 + 全端粘贴登录，WS/上传**硬切**强制鉴权 | token 明文仅创建响应出现一次（服务端 sha256(salt+token) 哈希 + timingSafeEqual，accounts.json 原子写挂 `polyphony-data` 卷）；「仅 Web 创建」= 服务端按 Origin 拦 Tauri 形态（`tauri://`、`tauri.localhost`），同源/跨源 dev/无 Origin 工具放行；硬切旧端断连，随 v3.3.0 全套安装包同步发布。双凭据模型：token=身份、房间码=准入 |
+| 25 | 房间簿放服务端（账号→rooms），非本地「最近房间」 | 换设备/换端登录列表一致；退出（单个/批量）服务端生效；容量 50/号淘汰最旧。本地 recentRooms 仅作托盘与 IndexedDB 兼容保留 |
+| 26 | 房间名登记不加防抖 | 实踩：改名后 <500ms 退出编辑器，防抖定时器被卸载取消，服务端房间名丢失；改名本身离散触发，两次 POST 成本可忽略 |
 
 ## 坑清单（按"再遇到怎么识别"组织）
 

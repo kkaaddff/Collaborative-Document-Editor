@@ -34,16 +34,15 @@ function bearerToken(req) {
   return h.startsWith('Bearer ') ? h.slice(7).trim() : '';
 }
 
-/** 同源或非浏览器(无 Origin)放行;App(Tauri 自有 Origin)拒绝 = 服务端也拦 App 创建。 */
-function sameOriginOrTool(req) {
+/** 「仅 Web 端创建」= 拦 App(Tauri 自有 Origin),Web(同源/跨源 dev)/非浏览器工具放行。 */
+function allowCreateOrigin(req) {
   const origin = req.headers.origin;
   if (!origin) return true; // curl/node 等非浏览器客户端(冒烟/CLI)
-  try {
-    const o = new URL(origin);
-    return o.host === req.headers.host;
-  } catch {
+  // Tauri WebView 的 Origin 形态:tauri://localhost 或 http(s)://tauri.localhost
+  if (/^tauri:\/\//i.test(origin) || /^https?:\/\/tauri\.localhost/i.test(origin)) {
     return false;
   }
+  return true;
 }
 
 function requireAuth(req, res, next) {
@@ -57,7 +56,7 @@ function requireAuth(req, res, next) {
 
 // 创建账号(Web 独占:同源校验)。token 明文仅在本次响应出现,服务端只存哈希。
 app.post('/auth/create', (req, res) => {
-  if (!sameOriginOrTool(req)) {
+  if (!allowCreateOrigin(req)) {
     return res.status(403).json({ error: '账号仅支持在 Web 端创建', code: 'ERR_WEB_ONLY' });
   }
   try {

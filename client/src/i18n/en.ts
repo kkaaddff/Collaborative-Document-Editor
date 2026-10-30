@@ -104,8 +104,8 @@ export const en = {
   welcome: {
     title: "Welcome to Polyphony",
     subtitle: "Many voices. One score. — Sign in to your account to begin",
-    createTab: "Create account",
-    loginTab: "Paste token",
+    createTab: "New account",
+    loginTab: "Have a token",
     serverLabel: "Server address",
     serverHint: "Leave empty to use this site's address in a browser; required in the app (e.g. http://IP:9091)",
     nameLabel: "Username",
