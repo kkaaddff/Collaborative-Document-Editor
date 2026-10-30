@@ -1,107 +1,52 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import {
-  getRecentRooms,
-  removeRecentRoom,
-  upsertRecentRoom,
-  useLocalStorageState,
-  USERNAME_KEY,
-} from "@/lib/storage";
+import { upsertRecentRoom } from "@/lib/storage";
 import { generateRoomCode, formatRelative } from "@/lib/roomCode";
 import { getServerBase, saveServer } from "@/lib/serverConfig";
 import { parseJoinPayload } from "@/lib/qr";
+import { authFetch, clearToken, useAccount } from "@/lib/auth";
 import { useT } from "@/i18n";
 import { QrModal } from "@/components/QrModal";
 import { ScanModal } from "@/components/ScanModal";
 import { isDesktopTauri } from "@/platform";
 import { onTrayAction, pushRecentRooms } from "@/platform/tray";
-import type { RecentRoom } from "@/types";
 
 type OnlineRoom = { code: string; userCount: number };
+type MyRoom = { code: string; name: string; lastUsed: number; userCount: number };
 
 export default function Home() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t, locale } = useT();
+  const { account } = useAccount();
+  const serverBase = useMemo(() => getServerBase(), []);
 
-  // 用户名：localStorage 持久化、创建/加入共用、预填
-  const [userName, setUserName] = useLocalStorageState<string>(USERNAME_KEY, "");
-
-  // ?join=CODE：扫码落地（新设备未存用户名时 Join 页转来）预填房间码
+  // ?join=CODE:扫码落地(未登录设备登录后转来)预填房间码
   const [roomCode, setRoomCode] = useState(
     () => (searchParams.get("join") ?? "").toUpperCase()
   );
-  const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
+  const [myRooms, setMyRooms] = useState<MyRoom[]>([]);
   const [onlineRooms, setOnlineRooms] = useState<OnlineRoom[]>([]);
-  // 二维码弹层（当前展示的房间码）/ 扫码弹层
+  const [serverOk, setServerOk] = useState<boolean | null>(null);
   const [qrFor, setQrFor] = useState<string | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
-  // 服务器连通状态：null=探测中 true/false=健康检查结果；地址仅本组件生命周期内固定（设置页保存后返回会重挂载重读）
-  const [serverOk, setServerOk] = useState<boolean | null>(null);
-  const serverBase = useMemo(() => getServerBase(), []);
+  // 右栏:我的房间 / 在线房间;批量管理模式(仅我的房间)
+  const [tab, setTab] = useState<"mine" | "online">("mine");
+  const [batch, setBatch] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const resolveName = () => {
-    const n = userName.trim();
-    return n || t("common.guestName", { n: Math.floor(Math.random() * 1000) });
-  };
-
-  // 统一进入房间：记录最近房间 + 跳转
-  const enterRoom = useCallback(
-    (code: string) => {
-      const existing =
-        getRecentRooms().find((r) => r.code === code)?.name ?? "";
-      upsertRecentRoom({ code, name: existing });
-      setRecentRooms(getRecentRooms());
-      navigate(`/editor?code=${code}&name=${encodeURIComponent(resolveName())}`);
-    },
-    [userName, t]
-  );
-
-  // 创建新文档（与加入共用用户名校验，行为一致）
-  const handleCreateNew = () => {
-    if (!userName.trim()) {
-      alert(t("home.alertNeedUsername"));
-      document.getElementById("userName")?.focus();
-      return;
+  // 我的房间(服务端房间簿,跨端一致)
+  const fetchMine = useCallback(async () => {
+    try {
+      const res = await authFetch(`${getServerBase()}/rooms`);
+      const data = await res.json();
+      setMyRooms(Array.isArray(data?.rooms) ? data.rooms : []);
+    } catch {
+      /* 401 已由 authFetch 统一处理;网络失败静默 */
     }
-    enterRoom(generateRoomCode());
-  };
+  }, []);
 
-  // 加入已有文档（表单提交）
-  const handleJoinRoom = (e: React.FormEvent) => {
-    e.preventDefault();
-    const code = roomCode.trim().toUpperCase();
-    if (!code) {
-      alert(t("home.alertNeedRoomCode"));
-      document.getElementById("roomCode")?.focus();
-      return;
-    }
-    if (!userName.trim()) {
-      alert(t("home.alertNeedUsername"));
-      document.getElementById("userName")?.focus();
-      return;
-    }
-    enterRoom(code);
-  };
-
-  // 扫码结果 → 固化 server（载荷携带时）→ 进房
-  const handleScanResult = (text: string) => {
-    setScanOpen(false);
-    const payload = parseJoinPayload(text);
-    if (!payload) {
-      alert(t("home.alertInvalidQr"));
-      return;
-    }
-    if (payload.server) saveServer(payload.server);
-    if (!userName.trim()) {
-      setRoomCode(payload.code);
-      alert(t("home.alertQrNeedUsername"));
-      return;
-    }
-    enterRoom(payload.code);
-  };
-
-  // 拉取服务器在线房间
+  // 在线房间(公开 /health,兼作服务器连通探测)
   const fetchOnline = useCallback(async () => {
     try {
       const res = await fetch(`${getServerBase()}/health`);
@@ -110,255 +55,414 @@ export default function Home() {
       const raw = (
         Array.isArray(data?.rooms) ? data.rooms : []
       ) as Array<Record<string, unknown>>;
-      const rooms: OnlineRoom[] = raw
-        .map((r) => ({
-          code: String(r?.code ?? ""),
-          userCount: Number(r?.userCount ?? 0),
-        }))
-        .filter((r) => r.code);
-      setOnlineRooms(rooms);
+      setOnlineRooms(
+        raw
+          .map((r) => ({
+            code: String(r?.code ?? ""),
+            userCount: Number(r?.userCount ?? 0),
+          }))
+          .filter((r) => r.code)
+      );
       setServerOk(true);
     } catch {
       setServerOk(false);
-      /* 离线/服务不可达：在线列表静默降级，状态条负责提示 */
     }
   }, []);
 
   useEffect(() => {
-    setRecentRooms(getRecentRooms());
+    fetchMine();
     fetchOnline();
-    const id = window.setInterval(fetchOnline, 15000);
+    const id = window.setInterval(() => {
+      fetchMine();
+      fetchOnline();
+    }, 15000);
     const onVisible = () => {
-      if (document.visibilityState === "visible") fetchOnline();
+      if (document.visibilityState === "visible") {
+        fetchMine();
+        fetchOnline();
+      }
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.clearInterval(id);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [fetchOnline]);
+  }, [fetchMine, fetchOnline]);
 
-  const handleRemoveRecent = (code: string) => {
-    removeRecentRoom(code);
-    setRecentRooms(getRecentRooms());
+  // 统一进入房间:服务端登记 + 跳转(名字来自账号)
+  const enterRoom = useCallback(
+    (code: string) => {
+      const existing = myRooms.find((r) => r.code === code)?.name ?? "";
+      authFetch(`${getServerBase()}/rooms/enter`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, name: existing }),
+      })
+        .then((r) => r.json())
+        .then((d) => Array.isArray(d?.rooms) && setMyRooms(d.rooms))
+        .catch(() => {
+          /* 登记失败不阻断进房 */
+        });
+      upsertRecentRoom({ code, name: existing });
+      navigate(
+        `/editor?code=${code}&name=${encodeURIComponent(account?.name ?? "")}`
+      );
+    },
+    [myRooms, account, navigate]
+  );
+
+  const handleCreateNew = () => enterRoom(generateRoomCode());
+
+  const handleJoinRoom = (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = roomCode.trim().toUpperCase();
+    if (!code) {
+      alert(t("home.alertNeedRoomCode"));
+      document.getElementById("roomCode")?.focus();
+      return;
+    }
+    enterRoom(code);
   };
 
-  // 桌面：最近房间 → 托盘菜单（菜单即达；托盘为桌面专属能力）
+  // 扫码结果 → 固化 server(载荷携带时)→ 进房
+  const handleScanResult = (text: string) => {
+    setScanOpen(false);
+    const payload = parseJoinPayload(text);
+    if (!payload) {
+      alert(t("home.alertInvalidQr"));
+      return;
+    }
+    if (payload.server) saveServer(payload.server);
+    setRoomCode(payload.code);
+    enterRoom(payload.code);
+  };
+
+  // 退出房间(单个/批量):服务端解除关联,房间内容不受影响
+  const doLeave = async (codes: string[]) => {
+    try {
+      const res = await authFetch(`${getServerBase()}/rooms/leave`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codes }),
+      });
+      const data = await res.json();
+      if (Array.isArray(data?.rooms)) setMyRooms(data.rooms);
+      setSelected(new Set());
+    } catch {
+      /* 401 统一处理 */
+    }
+  };
+
+  const leaveSingle = (code: string) => {
+    if (!window.confirm(t("home.leaveSingleConfirm", { code }))) return;
+    void doLeave([code]);
+  };
+
+  const toggleSelect = (code: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  };
+
+  const leaveSelected = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(t("home.leaveBatchConfirm", { n: selected.size }))) return;
+    void doLeave([...selected]);
+  };
+
+  const logout = () => {
+    if (!window.confirm(t("topbar.logoutConfirm"))) return;
+    clearToken();
+    navigate("/welcome", { replace: true });
+  };
+
+  // 桌面:我的房间 → 托盘菜单;语言变化重建
   useEffect(() => {
     if (!isDesktopTauri()) return;
-    pushRecentRooms(recentRooms, locale);
-  }, [recentRooms, locale]);
+    pushRecentRooms(
+      myRooms.map(({ code, name, lastUsed }) => ({ code, name, lastUsed })),
+      locale
+    );
+  }, [myRooms, locale]);
 
-  // 桌面：托盘动作（新建/直达房间）→ 导航
+  // 桌面:托盘动作(新建/直达房间)→ 导航
+  const enterRef = useRef(enterRoom);
+  enterRef.current = enterRoom;
   useEffect(() => {
     if (!isDesktopTauri()) return;
     let disposed = false;
     let un: (() => void) | undefined;
     onTrayAction((action) => {
-      if (action.type === "new") enterRoom(generateRoomCode());
-      else enterRoom(action.code);
+      if (action.type === "new") enterRef.current(generateRoomCode());
+      else enterRef.current(action.code);
     }).then((u) => (disposed ? u() : (un = u)));
     return () => {
       disposed = true;
       un?.();
     };
-  }, [enterRoom]);
+  }, []);
 
-  // code → 本地名（在线房间列表交叉引用显示）
-  const nameByCode = new Map(recentRooms.map((r) => [r.code, r.name]));
+  const nameByCode = new Map(myRooms.map((r) => [r.code, r.name]));
+  const allSelected = myRooms.length > 0 && selected.size === myRooms.length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full">
-        {/* 标题区域 */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden">
+      {/* 顶栏:品牌居左;右上角固定「用户名 · 服务器地址」+ 设置/退出登录 */}
+      <header className="flex items-center justify-between px-6 py-3 shrink-0">
+        <div className="flex items-baseline gap-3 min-w-0">
+          <h1 className="text-2xl font-bold text-gray-900">
             {t("common.appName")}
           </h1>
-          <p className="text-lg text-gray-600">{t("home.taglineLine")}</p>
-          {/* 服务器直连状态：绿=已连 红=不可达 灰=探测中 */}
-          <div className="flex items-center justify-center gap-2 mt-4 text-sm">
-            <span
-              className={`inline-block w-2 h-2 rounded-full shrink-0 ${
-                serverOk === null
-                  ? "bg-gray-300"
-                  : serverOk
-                    ? "bg-green-500"
-                    : "bg-red-500"
-              }`}
-            />
-            <span className="text-gray-500 font-mono truncate max-w-xs">
-              {serverBase}
-            </span>
-            <Link
-              to="/settings"
-              className="text-blue-600 hover:text-blue-700 hover:underline shrink-0"
-            >
-              {t("home.settingsLink")}
-            </Link>
-          </div>
+          <p className="text-sm text-gray-500 truncate hidden md:block">
+            {t("common.taglineShort")}
+          </p>
         </div>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-sm text-gray-700 font-medium truncate max-w-[10rem]">
+            {account?.name ?? t("common.anonymous")}
+          </span>
+          <span className="text-gray-300">·</span>
+          <span
+            className={`text-xs font-mono truncate max-w-[14rem] ${
+              serverOk === false ? "text-red-500" : "text-gray-500"
+            }`}
+            title={serverBase}
+          >
+            {serverBase}
+          </span>
+          <Link
+            to="/settings"
+            title={t("home.settingsLink")}
+            className="text-gray-400 hover:text-blue-600 px-1"
+          >
+            ⚙
+          </Link>
+          <button
+            onClick={logout}
+            title={t("topbar.logout")}
+            className="text-gray-400 hover:text-red-500 px-1 text-sm"
+          >
+            ↩
+          </button>
+        </div>
+      </header>
 
-        {/* 服务器不可达时的直连引导（Web 跨源/App 未配置场景） */}
-        {serverOk === false && (
-          <div className="mb-6 rounded-xl bg-yellow-50 border border-yellow-200 px-4 py-3 text-sm text-yellow-800">
-            {t("home.serverUnreachableBefore")}
-            <Link
-              to="/settings"
-              className="font-semibold underline underline-offset-2"
-            >
-              {t("home.serverUnreachableLink")}
-            </Link>
-            {t("home.serverUnreachableAfter")}
-          </div>
-        )}
+      {/* 服务器不可达细条引导 */}
+      {serverOk === false && (
+        <div className="mx-6 mb-2 rounded-lg bg-yellow-50 border border-yellow-200 px-4 py-2 text-sm text-yellow-800 shrink-0">
+          {t("home.serverUnreachableBefore")}
+          <Link
+            to="/settings"
+            className="font-semibold underline underline-offset-2"
+          >
+            {t("home.serverUnreachableLink")}
+          </Link>
+          {t("home.serverUnreachableAfter")}
+        </div>
+      )}
 
-        {/* 主要内容卡片 */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8 space-y-8">
-          {/* 用户名：创建/加入共用 */}
-          <div>
+      {/* 双栏主体:一屏展示,列表内部滚动 */}
+      <main className="flex-1 flex gap-4 px-6 pb-6 min-h-0">
+        {/* 左栏:操作入口 */}
+        <section className="w-2/5 max-w-sm flex flex-col gap-4 min-h-0">
+          <button
+            onClick={handleCreateNew}
+            className="shrink-0 h-28 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-lg font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg flex items-center justify-center gap-2"
+          >
+            <span className="text-2xl">＋</span> {t("home.createBtn")}
+          </button>
+
+          <form
+            onSubmit={handleJoinRoom}
+            className="shrink-0 bg-white rounded-2xl shadow-lg p-4 space-y-3"
+          >
             <label
-              htmlFor="userName"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              htmlFor="roomCode"
+              className="block text-sm font-medium text-gray-700"
             >
-              {t("home.username")}
+              {t("home.roomCode")}
             </label>
             <input
               type="text"
-              id="userName"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              placeholder={t("home.usernamePlaceholder")}
-              maxLength={20}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              id="roomCode"
+              value={roomCode}
+              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+              placeholder={t("home.roomCodePlaceholder")}
+              maxLength={8}
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono text-sm"
             />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="flex-1 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
+              >
+                {t("home.joinBtn")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setScanOpen(true)}
+                title={t("home.scanBtnTitle")}
+                className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
+              >
+                📷 {t("home.scanBtn")}
+              </button>
+            </div>
+          </form>
+
+          {/* 特性压缩为单行 */}
+          <div className="mt-auto shrink-0 bg-white/70 rounded-xl px-4 py-3 text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
+            <span>🔒 {t("home.featureSyncTitle")}</span>
+            <span>📝 {t("home.featureRichTitle")}</span>
+            <span>💾 {t("home.offlineWritable")}</span>
+            <span>📷 {t("home.scanBtnTitle")}</span>
           </div>
+        </section>
 
-          {/* 创建新文档 */}
-          <div className="border-b border-gray-200 pb-8">
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              {t("home.createTitle")}
-            </h2>
-            <p className="text-gray-600 mb-6">{t("home.createDesc")}</p>
+        {/* 右栏:房间列表(主体) */}
+        <section className="flex-1 bg-white rounded-2xl shadow-lg flex flex-col min-h-0">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
+            <div className="flex gap-1">
+              <button
+                onClick={() => {
+                  setTab("mine");
+                  setSelected(new Set());
+                }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  tab === "mine"
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {t("home.myRooms")}
+              </button>
+              <button
+                onClick={() => setTab("online")}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  tab === "online"
+                    ? "bg-blue-50 text-blue-700"
+                    : "text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {t("home.onlineTab")}
+              </button>
+            </div>
 
-            <button
-              onClick={handleCreateNew}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-4 px-6 rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {t("home.createBtn")}
-            </button>
-          </div>
-
-          {/* 加入已有文档 */}
-          <div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-              {t("home.joinTitle")}
-            </h2>
-            <p className="text-gray-600 mb-6">{t("home.joinDesc")}</p>
-            <form onSubmit={handleJoinRoom} className="space-y-4">
-              <div>
-                <label
-                  htmlFor="roomCode"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  {t("home.roomCode")}
-                </label>
-                <input
-                  type="text"
-                  id="roomCode"
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  placeholder={t("home.roomCodePlaceholder")}
-                  maxLength={8}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
-              </div>
-
-              <div className="flex gap-3">
+            {tab === "mine" &&
+              (batch ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() =>
+                      setSelected(
+                        allSelected ? new Set() : new Set(myRooms.map((r) => r.code))
+                      )
+                    }
+                    className="text-xs text-gray-500 hover:text-blue-600"
+                  >
+                    {allSelected ? t("common.cancel") : t("home.selectAll")}
+                  </button>
+                  <button
+                    onClick={leaveSelected}
+                    disabled={selected.size === 0}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 disabled:opacity-40 transition-colors"
+                  >
+                    {t("home.leaveSelected")}
+                    {selected.size > 0 ? ` (${selected.size})` : ""}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBatch(false);
+                      setSelected(new Set());
+                    }}
+                    className="text-xs px-2 py-1.5 text-gray-400 hover:text-gray-600"
+                  >
+                    {t("home.batchDone")}
+                  </button>
+                </div>
+              ) : (
                 <button
-                  type="submit"
-                  className="flex-1 bg-gray-900 text-white font-semibold py-4 px-6 rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-lg hover:shadow-xl"
+                  onClick={() => setBatch(true)}
+                  disabled={myRooms.length === 0}
+                  className="text-xs text-gray-500 hover:text-blue-600 disabled:opacity-40"
                 >
-                  {t("home.joinBtn")}
+                  ⚙ {t("home.batchBtn")}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setScanOpen(true)}
-                  title={t("home.scanBtnTitle")}
-                  className="px-5 py-4 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
-                >
-                  {t("home.scanBtn")}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        {/* 房间列表：最近房间（本地） + 在线房间（服务器） */}
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* 我的最近房间 */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <span>🕘</span> {t("home.recentTitle")}
-            </h3>
-            {recentRooms.length === 0 ? (
-              <p className="text-sm text-gray-400 py-6 text-center">
-                {t("home.recentEmpty")}
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {recentRooms.map((room) => (
-                  <li key={room.code}>
-                    <div className="group flex items-center gap-2 p-3 rounded-lg hover:bg-blue-50 transition-colors">
-                      <button
-                        onClick={() => enterRoom(room.code)}
-                        className="flex-1 flex items-center gap-2 text-left min-w-0"
-                      >
-                        <span className="font-medium text-gray-900 truncate">
-                          {room.name || t("common.unnamedDoc")}
-                        </span>
-                        <code className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono shrink-0">
-                          {room.code}
-                        </code>
-                        <span className="text-xs text-gray-400 shrink-0">
-                          {formatRelative(room.lastUsed, locale)}
-                        </span>
-                      </button>
-                      <button
-                        onClick={() => setQrFor(room.code)}
-                        title={t("home.showQrTitle")}
-                        className="text-gray-300 hover:text-blue-500 px-1 leading-none"
-                      >
-                        ▦
-                      </button>
-                      <button
-                        onClick={() => handleRemoveRecent(room.code)}
-                        title={t("home.removeRecentTitle")}
-                        className="text-gray-300 hover:text-red-500 px-1 text-lg leading-none"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+              ))}
           </div>
 
-          {/* 服务器在线房间 */}
-          <div className="bg-white rounded-xl shadow-lg p-6">
-            <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <span>🟢</span> {t("home.onlineTitle")}
-            </h3>
-            {onlineRooms.length === 0 ? (
-              <p className="text-sm text-gray-400 py-6 text-center">
+          {/* 列表:内部滚动,整页不滚 */}
+          <div className="flex-1 overflow-y-auto px-2 py-2">
+            {tab === "mine" ? (
+              myRooms.length === 0 ? (
+                <p className="text-sm text-gray-400 py-12 text-center">
+                  {t("home.recentEmpty")}
+                </p>
+              ) : (
+                <ul className="space-y-1">
+                  {myRooms.map((room) => (
+                    <li key={room.code}>
+                      <div className="group flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-blue-50 transition-colors">
+                        {batch && (
+                          <input
+                            type="checkbox"
+                            checked={selected.has(room.code)}
+                            onChange={() => toggleSelect(room.code)}
+                            className="shrink-0 accent-blue-600"
+                          />
+                        )}
+                        <button
+                          onClick={() => !batch && enterRoom(room.code)}
+                          disabled={batch}
+                          className="flex-1 flex items-center gap-2 text-left min-w-0 disabled:cursor-default"
+                        >
+                          <span className="font-medium text-gray-900 truncate">
+                            {room.name || t("common.unnamedDoc")}
+                          </span>
+                          <code className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono shrink-0">
+                            {room.code}
+                          </code>
+                          <span className="ml-auto text-xs shrink-0 flex items-center gap-2">
+                            {room.userCount > 0 ? (
+                              <span className="text-green-600">
+                                {t("home.nOnline", { n: room.userCount })}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">
+                                {t("home.lastUsed")} {formatRelative(room.lastUsed, locale)}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => setQrFor(room.code)}
+                          title={t("home.showQrTitle")}
+                          className="text-gray-300 hover:text-blue-500 px-1 shrink-0"
+                        >
+                          ▦
+                        </button>
+                        <button
+                          onClick={() => leaveSingle(room.code)}
+                          title={t("home.leaveSingleTitle")}
+                          className="text-gray-300 hover:text-red-500 px-1 shrink-0"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )
+            ) : onlineRooms.length === 0 ? (
+              <p className="text-sm text-gray-400 py-12 text-center">
                 {t("home.onlineEmpty")}
               </p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-1">
                 {onlineRooms.map((room) => (
                   <li key={room.code}>
-                    <div className="group flex items-center gap-2 p-3 rounded-lg hover:bg-blue-50 transition-colors">
+                    <div className="group flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-blue-50 transition-colors">
                       <button
                         onClick={() => enterRoom(room.code)}
                         className="flex-1 flex items-center gap-2 text-left min-w-0"
@@ -376,7 +480,7 @@ export default function Home() {
                       <button
                         onClick={() => setQrFor(room.code)}
                         title={t("home.showQrTitle")}
-                        className="text-gray-300 hover:text-blue-500 px-1 leading-none"
+                        className="text-gray-300 hover:text-blue-500 px-1 shrink-0"
                       >
                         ▦
                       </button>
@@ -386,47 +490,20 @@ export default function Home() {
               </ul>
             )}
           </div>
-        </div>
+        </section>
+      </main>
 
-        {/* 二维码 / 扫码弹层 */}
-        {qrFor && (
-          <QrModal
-            code={qrFor}
-            server={serverBase}
-            onClose={() => setQrFor(null)}
-          />
-        )}
-        {scanOpen && (
-          <ScanModal onResult={handleScanResult} onClose={() => setScanOpen(false)} />
-        )}
-
-        {/* 功能特性 */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg p-6 shadow-lg">
-            <div className="text-3xl mb-3">🔒</div>
-            <h3 className="font-semibold text-gray-900 mb-2">
-              {t("home.featureSyncTitle")}
-            </h3>
-            <p className="text-sm text-gray-600">{t("home.featureSyncDesc")}</p>
-          </div>
-
-          <div className="bg-white rounded-lg p-6 shadow-lg">
-            <div className="text-3xl mb-3">⚡</div>
-            <h3 className="font-semibold text-gray-900 mb-2">
-              {t("home.featureRichTitle")}
-            </h3>
-            <p className="text-sm text-gray-600">{t("home.featureRichDesc")}</p>
-          </div>
-
-          <div className="bg-white rounded-lg p-6 shadow-lg">
-            <div className="text-3xl mb-3">🏠</div>
-            <h3 className="font-semibold text-gray-900 mb-2">
-              {t("home.featureRoomsTitle")}
-            </h3>
-            <p className="text-sm text-gray-600">{t("home.featureRoomsDesc")}</p>
-          </div>
-        </div>
-      </div>
+      {/* 二维码 / 扫码弹层 */}
+      {qrFor && (
+        <QrModal
+          code={qrFor}
+          server={serverBase}
+          onClose={() => setQrFor(null)}
+        />
+      )}
+      {scanOpen && (
+        <ScanModal onResult={handleScanResult} onClose={() => setScanOpen(false)} />
+      )}
     </div>
   );
 }

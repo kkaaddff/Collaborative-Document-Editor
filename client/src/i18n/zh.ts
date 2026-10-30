@@ -3,6 +3,7 @@
 export const zh = {
   common: {
     appName: "复调",
+    taglineShort: "多个声部，一份总谱。",
     close: "关闭",
     cancel: "取消",
     unnamedDoc: "未命名文档",
@@ -46,6 +47,17 @@ export const zh = {
     alertNeedRoomCode: "请输入房间代码",
     alertInvalidQr: "未识别到有效的房间二维码",
     alertQrNeedUsername: "已识别房间，请填写用户名后加入",
+    myRooms: "我的房间",
+    onlineTab: "在线房间",
+    batchBtn: "批量管理",
+    batchDone: "完成",
+    selectAll: "全选",
+    leaveSelected: "退出所选",
+    leaveSingleTitle: "退出该房间",
+    leaveSingleConfirm: "退出后仍可凭房间码再次加入。确定退出 {code}？",
+    leaveBatchConfirm: "退出后仍可凭房间码再次加入。确定退出所选 {n} 个房间？",
+    lastUsed: "上次使用",
+    offlineWritable: "离线可写",
   },
 
   settings: {

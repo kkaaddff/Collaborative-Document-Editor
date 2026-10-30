@@ -8,6 +8,7 @@ type Shape = {
 export const en = {
   common: {
     appName: "Polyphony",
+    taglineShort: "Many voices. One score.",
     close: "Close",
     cancel: "Cancel",
     unnamedDoc: "Untitled document",
@@ -51,6 +52,17 @@ export const en = {
     alertNeedRoomCode: "Please enter a room code",
     alertInvalidQr: "Not a valid room QR code",
     alertQrNeedUsername: "Room recognized — set a username to join",
+    myRooms: "My rooms",
+    onlineTab: "Live rooms",
+    batchBtn: "Manage",
+    batchDone: "Done",
+    selectAll: "Select all",
+    leaveSelected: "Leave selected",
+    leaveSingleTitle: "Leave this room",
+    leaveSingleConfirm: "You can rejoin later with the room code. Leave {code}?",
+    leaveBatchConfirm: "You can rejoin later with room codes. Leave the {n} selected rooms?",
+    lastUsed: "Last used",
+    offlineWritable: "Offline-ready",
   },
 
   settings: {
