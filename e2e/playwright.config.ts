@@ -39,6 +39,17 @@ export default defineConfig({
       use: { ...devices["Pixel 7"] },
       testMatch: /ui-mobile\.spec\.ts/,
     },
+    {
+      name: "mobile-sm", // 最小主流手机(360px):同一套断言兜最窄视口
+      use: {
+        viewport: { width: 360, height: 760 },
+        isMobile: true,
+        hasTouch: true,
+        deviceScaleFactor: 2,
+        locale: "zh-CN",
+      },
+      testMatch: /ui-mobile\.spec\.ts/,
+    },
   ],
   webServer: [
     {

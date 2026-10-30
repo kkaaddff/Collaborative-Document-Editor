@@ -193,9 +193,9 @@ test.describe("设置(移动)", () => {
     await page.goto("/settings");
     await expect(page.getByRole("heading", { name: "设置" })).toBeVisible();
     await expectNoBreakout(page);
-    const vw = page.viewportSize()!.width;
+    // 纵排全宽 = 与输入框同宽(内容区撑满,视口无关;卡片 p-8 内边距已扣除)
+    const input = await page.locator("#serverUrl").boundingBox();
     const test = await page.getByRole("button", { name: "测试连接" }).boundingBox();
-    // 卡片自带 p-8 内边距:全宽指内容区撑满(≥75% 视口)
-    expect(test!.width).toBeGreaterThan(vw * 0.75);
+    expect(test!.width).toBeGreaterThan(input!.width - 4);
   });
 });
