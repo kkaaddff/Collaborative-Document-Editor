@@ -1,13 +1,19 @@
-# coordination-v2 —— all-in-one（前端静态 + 协同 WS 同端口）
-# 宿主机 9091 ← fnos connect 映射为随机四级域名 https://<random>.fnos.net
-# 证书由 fnos 宿主处理，容器内只跑 HTTP。
+# 复调 Polyphony —— all-in-one（前端静态 + 协同 WS 同端口）
+# 宿主机 9091 ← fnos connect 映射为随机四级域名 https://<random>.fnos.net，
+# 证书由宿主反代处理，容器内只跑 HTTP。
 services:
-  coordination:
+  polyphony:
     build: .
-    image: coordination-v2:local
-    container_name: coordination
+    image: polyphony:latest
+    container_name: polyphony
     restart: unless-stopped
+    # 给 WS 客户端留优雅断开窗口（默认 10s 内 kill 会硬断）
+    stop_grace_period: 15s
     ports:
       - "9091:9091"
     volumes:
-      - ./data/uploads:/app/server/uploads
+      - polyphony-uploads:/app/server/uploads
+    mem_limit: 512m
+
+volumes:
+  polyphony-uploads:

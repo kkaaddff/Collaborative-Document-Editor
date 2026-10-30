@@ -1,12 +1,19 @@
+# 构建上下文瘦身：web/server 构建所需之外的都排除
 .git
-node_modules
-.next
-out
-dist
-logs
-.release-staging
+.github
+.gitea
+.claude
+.zcode
+docs
+e2e
 deploy
-server/node_modules
-server/uploads
+node_modules
+**/node_modules
+client/dist
+client/src-tauri
+logs
 *.log
 .DS_Store
+.env*
+Dockerfile
+docker-compose.yml
