@@ -15,7 +15,8 @@ export default function Join() {
 
   useEffect(() => {
     const server = searchParams.get("server");
-    const code = (searchParams.get("code") ?? "").trim().toUpperCase();
+    // slice(0,8) 与首页输入框 maxLength 对齐:超长码截断,保证与手输路径同房间
+    const code = (searchParams.get("code") ?? "").trim().toUpperCase().slice(0, 8);
     if (server) saveServer(server);
 
     if (!code) {

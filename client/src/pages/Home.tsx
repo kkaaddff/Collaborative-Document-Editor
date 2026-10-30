@@ -22,8 +22,9 @@ export default function Home() {
   const serverBase = useMemo(() => getServerBase(), []);
 
   // ?join=CODE:扫码落地(未登录设备登录后转来)预填房间码
+  // slice(0,8) 与输入框 maxLength 对齐:?join= 传入超长码时两端必须进同一房间
   const [roomCode, setRoomCode] = useState(
-    () => (searchParams.get("join") ?? "").toUpperCase()
+    () => (searchParams.get("join") ?? "").toUpperCase().slice(0, 8)
   );
   const [myRooms, setMyRooms] = useState<MyRoom[]>([]);
   const [onlineRooms, setOnlineRooms] = useState<OnlineRoom[]>([]);

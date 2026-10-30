@@ -24,4 +24,17 @@ test.describe("/join 分流", () => {
     await page.goto("/join");
     await expect(page).toHaveURL("/");
   });
+
+  test("超长码截断到 8 位:?join 预填与手输进同一房间(回归)", async ({ page }) => {
+    await loginTestAccount(page);
+    // ?join= 传 10 位码 → 预填应截断为 8 位进入
+    await page.goto("/?join=ABCDEFGHIJ");
+    await expect(page.locator("#roomCode")).toHaveValue("ABCDEFGH");
+    await page.getByRole("button", { name: "加入文档" }).click();
+    await expect(page).toHaveURL(/\/editor\?code=ABCDEFGH/);
+
+    // /join 直达路径同样截断
+    await page.goto("/join?code=KLMNOPQRST");
+    await expect(page).toHaveURL(/\/editor\?code=KLMNOPQR/);
+  });
 });
