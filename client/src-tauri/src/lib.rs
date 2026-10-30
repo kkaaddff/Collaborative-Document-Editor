@@ -87,7 +87,7 @@ fn set_recent_rooms(app: AppHandle, rooms: Vec<RecentRoom>, locale: String) -> R
     let menu = build_menu(&app, &rooms, &locale).map_err(|e| e.to_string())?;
     let tooltip = if locale == "en" { "Polyphony" } else { "复调 Polyphony" };
     let tray = &app.state::<TrayState>().tray;
-    tray.set_tooltip(tooltip).map_err(|e| e.to_string())?;
+    tray.set_tooltip(Some(tooltip)).map_err(|e| e.to_string())?;
     tray.set_menu(Some(menu))
         .map_err(|e| e.to_string())?;
     Ok(())
