@@ -30,8 +30,14 @@ export default defineConfig({
   },
   projects: [
     {
-      name: "chrome",
+      name: "chrome", // 桌面:全部功能用例(不含移动 UI 专项)
       use: { ...devices["Desktop Chrome"] },
+      testIgnore: /ui-mobile\.spec\.ts/,
+    },
+    {
+      name: "mobile", // 移动(Pixel 7 仿真):全页面布局/触达 UI 专项
+      use: { ...devices["Pixel 7"] },
+      testMatch: /ui-mobile\.spec\.ts/,
     },
   ],
   webServer: [

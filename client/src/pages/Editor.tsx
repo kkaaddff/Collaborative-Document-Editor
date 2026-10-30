@@ -209,7 +209,7 @@ export default function Editor() {
                 plugins={plugins}
                 contentEditableClassName="focus:outline-none min-h-[400px] p-4 text-gray-900 dark:text-gray-100"
                 // 工具栏内部横向滚动:窄屏不再裁切按钮、不撑破页面
-                className="h-full dark:[&_.mdx-editor-toolbar]:bg-gray-800 [&_.mdx-editor-toolbar]:bg-white [&_.mdx-editor-toolbar]:overflow-x-auto [&_.mdx-editor-toolbar]:max-w-full"
+                className="h-full dark:[&_.mdxeditor-toolbar]:bg-gray-800 [&_.mdxeditor-toolbar]:bg-white [&_.mdxeditor-toolbar]:overflow-x-auto [&_.mdxeditor-toolbar]:max-w-full"
                 spellCheck={true}
               />
             </div>
