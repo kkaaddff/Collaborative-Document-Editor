@@ -12,6 +12,7 @@ This document collects the guardrails for anyone running autonomous or semi-auto
 - QR payloads are Web URLs (`<server>/join?code=&server=`) consumed by `/join` — any phone camera works as a fallback; in-app scanning goes through `platform/scanQr.ts` (native plugin on Android, jsQR+getUserMedia elsewhere).
 - Packaging runs entirely on GitHub Actions (`.github/workflows/build.yml`: web, desktop mac/win/linux, android). Local machines need no Rust/JDK — local work is `tsc`/`eslint`/`vite build` + convergence smoke only.
 - Deployment is internalized under `deploy/` (`config.sh`, `deploy.sh`, `remote-restart.sh`, `nginx/` site configs) driven by `npm run deploy`; `setup.sh` bootstraps local dev, `ecosystem.config.js` configures PM2, and `Dockerfile`/`docker-compose.yml` build the all-in-one image.
+- `docs/` is the full v3 handoff: architecture, collaboration internals, CI, deploy, testing, plus the decision log and gotcha inventory (`docs/decisions.md`). Consult it before re-deriving a design or re-debugging a known trap.
 
 ### Build, Test, and Development Commands
 - Install dependencies with `npm install` in `client/` and `server/` (root package.json is an orchestrator only; `setup.sh` does both).
