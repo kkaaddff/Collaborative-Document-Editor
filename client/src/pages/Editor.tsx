@@ -19,6 +19,14 @@ const COLLAB_ERROR_KEYS: Record<string, "editor.collabError" | "editor.connectio
   ERR_CONNECTION_CLOSED: "editor.connectionClosed",
 };
 
+/** 服务端上传错误码（server/index.js）→ 文案键；旧服务端无 code 时回落 error 文本。 */
+const UPLOAD_ERROR_KEYS: Record<string, "errors.E_NO_FILE" | "errors.E_FILE_TYPE" | "errors.E_FILE_SIZE" | "errors.E_UPLOAD"> = {
+  E_NO_FILE: "errors.E_NO_FILE",
+  E_FILE_TYPE: "errors.E_FILE_TYPE",
+  E_FILE_SIZE: "errors.E_FILE_SIZE",
+  E_UPLOAD: "errors.E_UPLOAD",
+};
+
 export default function Editor() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -104,7 +112,8 @@ export default function Editor() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "upload failed");
+        const key = UPLOAD_ERROR_KEYS[errorData.code as string];
+        throw new Error(key ? t(key) : errorData.error || t("errors.E_UPLOAD"));
       }
 
       const data = await response.json();

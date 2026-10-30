@@ -4,15 +4,21 @@
 export const USERNAME_KEY = "polyphony.username";
 export const RECENT_ROOMS_KEY = "polyphony.recentRooms";
 export const SERVER_KEY = "polyphony.server";
+export const LOCALE_KEY = "polyphony.locale";
 
 type RecentRoomSeed = { code: string; name: string; lastUsed?: number };
 
 export async function seedStorage(
   page: import("@playwright/test").Page,
-  opts: { username?: string; recentRooms?: RecentRoomSeed[]; server?: string }
+  opts: {
+    username?: string;
+    recentRooms?: RecentRoomSeed[];
+    server?: string;
+    locale?: string;
+  }
 ) {
   await page.addInitScript((args) => {
-    const { username, recentRooms, server, keys } = args;
+    const { username, recentRooms, server, locale, keys } = args;
     if (username !== undefined)
       localStorage.setItem(keys.username, JSON.stringify(username));
     if (recentRooms !== undefined)
@@ -27,11 +33,20 @@ export async function seedStorage(
         )
       );
     if (server !== undefined) localStorage.setItem(keys.server, server);
+    // locale 与 username 同走 useLocalStorageState(JSON.stringify 格式),裸写会解析失败回落 auto
+    if (locale !== undefined)
+      localStorage.setItem(keys.locale, JSON.stringify(locale));
   }, {
     username: opts.username,
     recentRooms: opts.recentRooms,
     server: opts.server,
-    keys: { username: USERNAME_KEY, recentRooms: RECENT_ROOMS_KEY, server: SERVER_KEY },
+    locale: opts.locale,
+    keys: {
+      username: USERNAME_KEY,
+      recentRooms: RECENT_ROOMS_KEY,
+      server: SERVER_KEY,
+      locale: LOCALE_KEY,
+    },
   });
 }
 

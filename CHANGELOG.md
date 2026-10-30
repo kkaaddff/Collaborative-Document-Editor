@@ -3,6 +3,22 @@
 本文件记录面向用户的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [3.2.0] - 2026-10-30
+
+中英双语界面,默认跟随系统语言。
+
+### 新增
+
+- **i18n（zh / en）**：默认跟随系统语言；设置页新增「界面语言」三选（跟随系统 / 中文 / English），即时生效并跨标签页同步。
+- 服务端上传校验错误附稳定错误码（`E_NO_FILE` / `E_FILE_TYPE` / `E_FILE_SIZE`），客户端按界面语言本地化提示（`error` 文本保留,旧客户端兼容）。
+- 桌面托盘菜单与 tooltip 随界面语言本地化（随 3.2.0 桌面安装包生效）。
+
+### 变更
+
+- 品牌呈现「各说各话」：中文界面显示「复调」、英文界面显示「Polyphony」，不再中英混排。
+- 相对时间（最近房间列表）改用标准 `Intl.RelativeTimeFormat`，随界面语言格式化。
+- 页面 `<title>` 与 `<html lang>` 随语言动态更新。
+
 ## [3.1.0] - 2026-10-30
 
 项目更名:**coordination-v2 → 复调 Polyphony**(Many voices. One score.)。

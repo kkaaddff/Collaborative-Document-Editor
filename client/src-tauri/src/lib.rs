@@ -26,12 +26,19 @@ struct TrayState {
 }
 
 #[cfg(desktop)]
-fn build_menu(app: &AppHandle, rooms: &[RecentRoom]) -> tauri::Result<Menu<tauri::Wry>> {
+fn build_menu(app: &AppHandle, rooms: &[RecentRoom], locale: &str) -> tauri::Result<Menu<tauri::Wry>> {
+    // 托盘文案随前端 locale（"zh"/"en"）本地化，缺省回落中文
+    let zh = locale != "en";
+    let (new_label, unnamed, show_label, quit_label) = if zh {
+        ("新建房间", "未命名", "显示主窗口", "退出")
+    } else {
+        ("New room", "Untitled", "Show window", "Quit")
+    };
     let menu = Menu::new(app)?;
     menu.append(&MenuItem::with_id(
         app,
         "new",
-        "新建房间",
+        new_label,
         true,
         None::<&str>,
     )?)?;
@@ -39,7 +46,7 @@ fn build_menu(app: &AppHandle, rooms: &[RecentRoom]) -> tauri::Result<Menu<tauri
         menu.append(&PredefinedMenuItem::separator(app)?)?;
         for r in rooms.iter().take(5) {
             let label = if r.name.is_empty() {
-                format!("未命名 · {}", r.code)
+                format!("{} · {}", unnamed, r.code)
             } else {
                 format!("{} · {}", r.name, r.code)
             };
@@ -56,11 +63,11 @@ fn build_menu(app: &AppHandle, rooms: &[RecentRoom]) -> tauri::Result<Menu<tauri
     menu.append(&MenuItem::with_id(
         app,
         "show",
-        "显示主窗口",
+        show_label,
         true,
         None::<&str>,
     )?)?;
-    menu.append(&PredefinedMenuItem::quit(app, Some("退出"))?)?;
+    menu.append(&PredefinedMenuItem::quit(app, Some(quit_label))?)?;
     Ok(menu)
 }
 
@@ -73,14 +80,15 @@ fn show_main(app: &AppHandle) {
     }
 }
 
-/// 前端最近房间变化时调用：重建托盘菜单。
+/// 前端最近房间/语言变化时调用：重建托盘菜单并同步 tooltip。
 #[cfg(desktop)]
 #[tauri::command]
-fn set_recent_rooms(app: AppHandle, rooms: Vec<RecentRoom>) -> Result<(), String> {
-    let menu = build_menu(&app, &rooms).map_err(|e| e.to_string())?;
-    app.state::<TrayState>()
-        .tray
-        .set_menu(Some(menu))
+fn set_recent_rooms(app: AppHandle, rooms: Vec<RecentRoom>, locale: String) -> Result<(), String> {
+    let menu = build_menu(&app, &rooms, &locale).map_err(|e| e.to_string())?;
+    let tooltip = if locale == "en" { "Polyphony" } else { "复调 Polyphony" };
+    let tray = &app.state::<TrayState>().tray;
+    tray.set_tooltip(tooltip).map_err(|e| e.to_string())?;
+    tray.set_menu(Some(menu))
         .map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -101,7 +109,8 @@ pub fn run() {
         builder = builder
             .setup(|app| {
                 let handle = app.handle().clone();
-                let menu = build_menu(&handle, &[])?;
+                // 启动先用中文占位；前端就绪后 set_recent_rooms 会带实际 locale 重建
+                let menu = build_menu(&handle, &[], "zh")?;
                 let tray = TrayIconBuilder::with_id("polyphony-tray")
                     .icon(handle.default_window_icon().unwrap().clone())
                     .tooltip("复调 Polyphony")

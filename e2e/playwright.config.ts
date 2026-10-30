@@ -14,6 +14,7 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: "http://localhost:5173",
+    locale: "zh-CN", // 固定中文断言基准（默认随系统的 UI 现已 i18n，Playwright 缺省 en-US 会挂）
     channel: "chrome", // 系统 Chrome，免下载
     headless: true,
     permissions: ["clipboard-read", "clipboard-write"], // 房间码复制

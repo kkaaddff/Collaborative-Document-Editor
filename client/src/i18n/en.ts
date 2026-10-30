@@ -8,7 +8,6 @@ type Shape = {
 export const en = {
   common: {
     appName: "Polyphony",
-    tagline: "Many voices. One score.",
     close: "Close",
     cancel: "Cancel",
     unnamedDoc: "Untitled document",
@@ -18,7 +17,7 @@ export const en = {
   },
 
   home: {
-    subtitle: "Realtime collaborative document editing",
+    taglineLine: "Many voices. One score. — Realtime collaborative document editing",
     settingsLink: "Settings",
     username: "Username",
     usernamePlaceholder: "Enter your name (remembered for next time)",

@@ -175,9 +175,7 @@ export default function Home() {
           <h1 className="text-5xl font-bold text-gray-900 mb-4">
             {t("common.appName")}
           </h1>
-          <p className="text-lg text-gray-600">
-            {t("common.tagline")} —— {t("home.subtitle")}
-          </p>
+          <p className="text-lg text-gray-600">{t("home.taglineLine")}</p>
           {/* 服务器直连状态：绿=已连 红=不可达 灰=探测中 */}
           <div className="flex items-center justify-center gap-2 mt-4 text-sm">
             <span

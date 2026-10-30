@@ -37,7 +37,7 @@ const storage = multer.diskStorage({
   },
 });
 
-// 文件过滤器：只允许图片
+// 文件过滤器：只允许图片（错误附稳定 code，客户端按 code 本地化；error 兼容旧客户端）
 const fileFilter = (_req, file, cb) => {
   const allowedTypes = /jpeg|jpg|png|gif|webp/;
   const mimetype = allowedTypes.test(file.mimetype);
@@ -46,7 +46,9 @@ const fileFilter = (_req, file, cb) => {
   if (mimetype && extname) {
     return cb(null, true);
   }
-  cb(new Error('只支持上传 jpg, jpeg, png, gif, webp 格式的图片'));
+  const err = new Error('只支持上传 jpg, jpeg, png, gif, webp 格式的图片');
+  err.code = 'E_FILE_TYPE';
+  cb(err);
 };
 
 const upload = multer({
@@ -59,14 +61,14 @@ const upload = multer({
 app.post('/upload', upload.single('image'), (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: '没有上传文件' });
+      return res.status(400).json({ error: '没有上传文件', code: 'E_NO_FILE' });
     }
 
     const fileUrl = `/uploads/${req.file.filename}`;
     res.json({ url: fileUrl });
   } catch (error) {
     console.error('图片上传失败:', error);
-    res.status(500).json({ error: '图片上传失败' });
+    res.status(500).json({ error: '图片上传失败', code: 'E_UPLOAD' });
   }
 });
 
@@ -74,11 +76,11 @@ app.post('/upload', upload.single('image'), (req, res) => {
 app.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({ error: '文件大小不能超过 5MB' });
+      return res.status(400).json({ error: '文件大小不能超过 5MB', code: 'E_FILE_SIZE' });
     }
-    return res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message, code: 'E_UPLOAD' });
   } else if (err) {
-    return res.status(400).json({ error: err.message });
+    return res.status(400).json({ error: err.message, code: err.code || 'E_UPLOAD' });
   }
   next();
 });

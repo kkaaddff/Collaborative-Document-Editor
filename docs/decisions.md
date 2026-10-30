@@ -25,6 +25,8 @@
 | 19 | Gitea CI：纯文档推送不部署 + 验证失败自动回滚 | README 错字不该踢在线用户下线；health+收敛冒烟双验证挡住坏构建；镜像按 git SHA 版本化 |
 | 20 | `.github/workflows` 加 `vars.DEPLOY_ENV == 'github'` 守卫 | Gitea 会同时读取 `.github/workflows/`，无守卫则推 tag 在自建 runner 上跑端产物流水线（ubuntu-latest 标签无人认领，永远排队）。`server_url` 守卫不可靠：Gitea 的 DEFAULT_ACTIONS_URL 常默认 github.com；仓库变量只在 GitHub 仓配置，确定性生效 |
 | 21 | 公开文档不出现内网 IP/域名/路径 | 仓库公开于 GitHub，运维细节只留在私有 Gitea；git 历史不重写（无密钥，仅旧拓扑，接受残留） |
+| 22 | i18n 自研轻量方案（v3.2.0），不用 react-i18next | 仅 zh/en 两种、~90 条文案：zh.ts 完本类型 + en.ts `satisfies` 同构校验 + `useT()` 复用 storage.ts 的 useSyncExternalStore/跨标签页订阅，零依赖零包体积；标准库 ~40KB gzip 与双套心智模型不值。相对时间直接用 `Intl.RelativeTimeFormat`。服务端错误走稳定码（`E_FILE_TYPE` 等）客户端本地化，`error` 字段保留兼容旧客户端 |
+| 23 | 协同错误在 hook 内置稳定码、渲染层翻译 | `useT` 若进 useCollaboration 的事件闭包，locale 变化会重建 provider（全员断线）；稳定码（`ERR_COLLAB_CONNECT`）+ Editor 映射使文案随语言即时切换而连接不动 |
 
 ## 坑清单（按"再遇到怎么识别"组织）
 

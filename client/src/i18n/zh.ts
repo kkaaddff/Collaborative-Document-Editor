@@ -3,7 +3,6 @@
 export const zh = {
   common: {
     appName: "复调",
-    tagline: "多个声部，一份总谱。",
     close: "关闭",
     cancel: "取消",
     unnamedDoc: "未命名文档",
@@ -13,7 +12,7 @@ export const zh = {
   },
 
   home: {
-    subtitle: "实时协同编辑，支持多用户同时编写文档",
+    taglineLine: "多个声部，一份总谱。—— 实时协同编辑，支持多用户同时编写文档",
     settingsLink: "设置",
     username: "用户名",
     usernamePlaceholder: "输入您的用户名（下次自动带出）",
