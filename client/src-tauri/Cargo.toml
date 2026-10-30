@@ -1,6 +1,6 @@
 [package]
 name = "polyphony"
-version = "3.3.1"
+version = "3.4.0"
 description = "复调 Polyphony 桌面端"
 edition = "2021"
 

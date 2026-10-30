@@ -148,6 +148,21 @@ export default function Editor() {
     [handleImageUpload]
   );
 
+  // 移动端在线用户抽屉:顶栏「👥 n」事件触发;ESC/遮罩关闭(桌面常驻栏不受影响)
+  const [usersDrawer, setUsersDrawer] = useState(false);
+  useEffect(() => {
+    const open = () => setUsersDrawer(true);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setUsersDrawer(false);
+    };
+    window.addEventListener("polyphony:open-users", open);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("polyphony:open-users", open);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
   if (!roomCode) {
     return null;
   }
@@ -158,13 +173,14 @@ export default function Editor() {
         roomCode={roomCode}
         roomName={roomName}
         isConnected={isConnected}
+        userCount={users.length}
         onRename={renameRoom}
         onLeave={() => navigate("/")}
       />
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 px-6 py-4">
-          <p className="text-red-700 dark:text-red-400">
+        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 px-4 md:px-6 py-3 md:py-4">
+          <p className="text-sm md:text-base text-red-700 dark:text-red-400">
             {COLLAB_ERROR_KEYS[error]
               ? t(COLLAB_ERROR_KEYS[error])
               : error}
@@ -172,8 +188,10 @@ export default function Editor() {
         </div>
       )}
 
-      <div className="flex-1 flex overflow-hidden">
-        <div className="flex-1 flex flex-col p-6">
+      {/* 主体:桌面=编辑区+常驻侧栏;移动=纯编辑区(侧栏进抽屉)。
+          min-w-0 是关键:flex 子项默认不收缩,固定宽侧栏会把编辑区撑出视口 */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="min-w-0 flex-1 flex flex-col p-4 md:p-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg flex-1 overflow-hidden flex flex-col">
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -190,15 +208,34 @@ export default function Editor() {
                 onChange={handleContentChange}
                 plugins={plugins}
                 contentEditableClassName="focus:outline-none min-h-[400px] p-4 text-gray-900 dark:text-gray-100"
-                className="h-full dark:[&_.mdx-editor-toolbar]:bg-gray-800 [&_.mdx-editor-toolbar]:bg-white"
+                // 工具栏内部横向滚动:窄屏不再裁切按钮、不撑破页面
+                className="h-full dark:[&_.mdx-editor-toolbar]:bg-gray-800 [&_.mdx-editor-toolbar]:bg-white [&_.mdx-editor-toolbar]:overflow-x-auto [&_.mdx-editor-toolbar]:max-w-full"
                 spellCheck={true}
               />
             </div>
           </div>
         </div>
 
-        <UsersPanel users={users} />
+        {/* 桌面常驻侧栏;移动端隐藏(改抽屉) */}
+        <div className="hidden md:block shrink-0">
+          <UsersPanel users={users} />
+        </div>
       </div>
+
+      {/* 移动端在线用户抽屉(遮罩 + 右滑面板) */}
+      {usersDrawer && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 md:hidden"
+          onClick={() => setUsersDrawer(false)}
+        >
+          <div
+            className="absolute right-0 top-0 h-full w-72 bg-white dark:bg-gray-800 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <UsersPanel users={users} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

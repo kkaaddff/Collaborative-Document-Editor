@@ -159,17 +159,17 @@ export default function Settings() {
             </div>
           )}
 
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={test}
               disabled={testing}
-              className="flex-1 py-3 px-6 rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+              className="flex-1 py-3 px-6 min-h-[44px] rounded-lg border border-gray-300 text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               {testing ? t("settings.testing") : t("settings.testBtn")}
             </button>
             <button
               onClick={save}
-              className="flex-1 py-3 px-6 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg"
+              className="flex-1 py-3 px-6 min-h-[44px] rounded-lg bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg"
             >
               {t("settings.saveBtn")}
             </button>

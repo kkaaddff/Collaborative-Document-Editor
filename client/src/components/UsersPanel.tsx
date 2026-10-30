@@ -1,11 +1,12 @@
-// 在线用户侧栏：awareness presence 列表（头像色点 + 用户名）。
+// 在线用户面板：awareness presence 列表(头像色点 + 用户名)。
+// 桌面=右侧常驻栏(md:w-80);移动=抽屉内容(w-full),由 Editor 装配。
 import type { User } from "@/types";
 import { useT } from "@/i18n";
 
 export function UsersPanel({ users }: { users: User[] }) {
   const { t } = useT();
   return (
-    <div className="w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-6 overflow-y-auto">
+    <div className="w-full md:w-80 bg-white dark:bg-gray-800 md:border-l border-gray-200 dark:border-gray-700 p-6 overflow-y-auto">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         {t("usersPanel.online", { n: users.length })}
       </h2>

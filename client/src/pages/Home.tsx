@@ -237,14 +237,14 @@ export default function Home() {
           <Link
             to="/settings"
             title={t("home.settingsLink")}
-            className="text-gray-400 hover:text-blue-600 px-1"
+            className="text-gray-400 hover:text-blue-600 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-base"
           >
             ⚙
           </Link>
           <button
             onClick={logout}
             title={t("topbar.logout")}
-            className="text-gray-400 hover:text-red-500 px-1 text-sm"
+            className="text-gray-400 hover:text-red-500 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-base"
           >
             ↩
           </button>
@@ -265,15 +265,15 @@ export default function Home() {
         </div>
       )}
 
-      {/* 双栏主体:一屏展示,列表内部滚动 */}
-      <main className="flex-1 flex gap-4 px-6 pb-6 min-h-0">
+      {/* 主体:桌面双栏一屏;移动单列纵排(列表内部滚动) */}
+      <main className="flex-1 flex flex-col md:flex-row gap-3 md:gap-4 px-4 md:px-6 pb-4 md:pb-6 pt-3 min-h-0">
         {/* 左栏:操作入口 */}
-        <section className="w-2/5 max-w-sm flex flex-col gap-4 min-h-0">
+        <section className="w-full md:w-2/5 md:max-w-sm flex flex-col gap-3 md:gap-4 min-h-0 shrink-0">
           <button
             onClick={handleCreateNew}
-            className="shrink-0 h-28 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-lg font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg flex items-center justify-center gap-2"
+            className="shrink-0 h-16 md:h-28 rounded-xl md:rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-base md:text-lg font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg flex items-center justify-center gap-2"
           >
-            <span className="text-2xl">＋</span> {t("home.createBtn")}
+            <span className="text-xl md:text-2xl">＋</span> {t("home.createBtn")}
           </button>
 
           <form
@@ -298,7 +298,7 @@ export default function Home() {
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="flex-1 py-2.5 rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
+                className="flex-1 py-2.5 min-h-[44px] rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
               >
                 {t("home.joinBtn")}
               </button>
@@ -306,15 +306,15 @@ export default function Home() {
                 type="button"
                 onClick={() => setScanOpen(true)}
                 title={t("home.scanBtnTitle")}
-                className="px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                className="px-4 py-2.5 min-h-[44px] rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors"
               >
-                📷 {t("home.scanBtn")}
+                📷 <span className="hidden sm:inline">{t("home.scanBtn")}</span>
               </button>
             </div>
           </form>
 
-          {/* 特性压缩为单行 */}
-          <div className="mt-auto shrink-0 bg-white/70 rounded-xl px-4 py-3 text-xs text-gray-500 flex flex-wrap gap-x-4 gap-y-1">
+          {/* 特性单行:桌面专属(移动空间优先给列表) */}
+          <div className="hidden md:flex mt-auto shrink-0 bg-white/70 rounded-xl px-4 py-3 text-xs text-gray-500 flex-wrap gap-x-4 gap-y-1">
             <span>🔒 {t("home.featureSyncTitle")}</span>
             <span>📝 {t("home.featureRichTitle")}</span>
             <span>💾 {t("home.offlineWritable")}</span>
@@ -322,8 +322,8 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 右栏:房间列表(主体) */}
-        <section className="flex-1 bg-white rounded-2xl shadow-lg flex flex-col min-h-0">
+        {/* 右栏:房间列表(桌面主体) */}
+        <section className="w-full flex-1 bg-white rounded-2xl shadow-lg flex flex-col min-h-0">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
             <div className="flex gap-1">
               <button
@@ -404,19 +404,21 @@ export default function Home() {
                 <ul className="space-y-1">
                   {myRooms.map((room) => (
                     <li key={room.code}>
-                      <div className="group flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-blue-50 transition-colors">
+                      {/* 两行式(窄屏自动换行):行1 名称+码;行2 状态+操作;按钮 ≥40px */}
+                      <div className="group flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors">
                         {batch && (
                           <input
                             type="checkbox"
                             checked={selected.has(room.code)}
                             onChange={() => toggleSelect(room.code)}
-                            className="shrink-0 accent-blue-600"
+                            className="shrink-0 size-5 accent-blue-600"
+                            aria-label={room.name || room.code}
                           />
                         )}
                         <button
                           onClick={() => !batch && enterRoom(room.code)}
                           disabled={batch}
-                          className="flex-1 flex items-center gap-2 text-left min-w-0 disabled:cursor-default"
+                          className="flex-1 min-w-[9rem] flex items-center gap-2 text-left py-1.5 disabled:cursor-default"
                         >
                           <span className="font-medium text-gray-900 truncate">
                             {room.name || t("common.unnamedDoc")}
@@ -424,32 +426,34 @@ export default function Home() {
                           <code className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono shrink-0">
                             {room.code}
                           </code>
-                          <span className="ml-auto text-xs shrink-0 flex items-center gap-2">
-                            {room.userCount > 0 ? (
-                              <span className="text-green-600">
-                                {t("home.nOnline", { n: room.userCount })}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">
-                                {t("home.lastUsed")} {formatRelative(room.lastUsed, locale)}
-                              </span>
-                            )}
-                          </span>
                         </button>
-                        <button
-                          onClick={() => setQrFor(room.code)}
-                          title={t("home.showQrTitle")}
-                          className="text-gray-300 hover:text-blue-500 px-1 shrink-0"
-                        >
-                          ▦
-                        </button>
-                        <button
-                          onClick={() => leaveSingle(room.code)}
-                          title={t("home.leaveSingleTitle")}
-                          className="text-gray-300 hover:text-red-500 px-1 shrink-0"
-                        >
-                          ✕
-                        </button>
+                        <span className="text-xs text-gray-400 shrink-0 order-3 md:order-none w-full md:w-auto pl-1 md:pl-0">
+                          {room.userCount > 0 ? (
+                            <span className="text-green-600">
+                              ● {t("home.nOnline", { n: room.userCount })}
+                            </span>
+                          ) : (
+                            <span>
+                              {t("home.lastUsed")} {formatRelative(room.lastUsed, locale)}
+                            </span>
+                          )}
+                        </span>
+                        <div className="flex items-center shrink-0 ml-auto md:ml-0">
+                          <button
+                            onClick={() => setQrFor(room.code)}
+                            title={t("home.showQrTitle")}
+                            className="text-gray-400 hover:text-blue-600 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-lg"
+                          >
+                            ▦
+                          </button>
+                          <button
+                            onClick={() => leaveSingle(room.code)}
+                            title={t("home.leaveSingleTitle")}
+                            className="text-gray-400 hover:text-red-500 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-lg"
+                          >
+                            ✕
+                          </button>
+                        </div>
                       </div>
                     </li>
                   ))}
@@ -463,10 +467,10 @@ export default function Home() {
               <ul className="space-y-1">
                 {onlineRooms.map((room) => (
                   <li key={room.code}>
-                    <div className="group flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-blue-50 transition-colors">
+                    <div className="group flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors">
                       <button
                         onClick={() => enterRoom(room.code)}
-                        className="flex-1 flex items-center gap-2 text-left min-w-0"
+                        className="flex-1 min-w-[9rem] flex items-center gap-2 text-left py-1.5"
                       >
                         <code className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-mono shrink-0">
                           {room.code}
@@ -474,14 +478,14 @@ export default function Home() {
                         <span className="font-medium text-gray-900 truncate">
                           {nameByCode.get(room.code) || t("common.onlineRoom")}
                         </span>
-                        <span className="ml-auto text-xs text-green-600 shrink-0">
-                          {t("home.nOnline", { n: room.userCount })}
-                        </span>
                       </button>
+                      <span className="text-xs text-green-600 shrink-0">
+                        ● {t("home.nOnline", { n: room.userCount })}
+                      </span>
                       <button
                         onClick={() => setQrFor(room.code)}
                         title={t("home.showQrTitle")}
-                        className="text-gray-300 hover:text-blue-500 px-1 shrink-0"
+                        className="text-gray-400 hover:text-blue-600 p-2 min-w-[40px] min-h-[40px] flex items-center justify-center text-lg shrink-0"
                       >
                         ▦
                       </button>
