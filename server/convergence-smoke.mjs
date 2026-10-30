@@ -1,17 +1,31 @@
 // 收敛冒烟：双客户端交错写 → 断言内容一致 + 计数完整；删除轮 + meta + awareness。
-// 用法：起服后 `node convergence-smoke.mjs [wsUrl]`（默认 ws://localhost:8101）。
+// 用法：起服后 `node convergence-smoke.mjs [httpBase]`（默认 http://localhost:8101）。
+// WS 已强制 token 鉴权：先建临时账号（无 Origin 的工具客户端可创建），再带 token 连接。
 import WebSocket from "ws";
 globalThis.WebSocket = WebSocket;
 import { Doc } from "yjs";
 import { WebsocketProvider } from "y-websocket";
 
-const SERVER = process.argv[2] || "ws://localhost:8101";
+const BASE = (process.argv[2] || "http://localhost:8101").replace(/\/+$/, "");
+const SERVER = BASE.replace(/^http/, "ws");
 const ROOM = "SMOKE" + Math.floor(Math.random() * 100000);
+
+const res = await fetch(`${BASE}/auth/create`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ name: `smoke-${Date.now()}` }),
+});
+if (!res.ok) {
+  console.error("FAIL: 创建冒烟账号失败", res.status, await res.text());
+  process.exit(1);
+}
+const { token } = await res.json();
+const authParams = { token };
 
 const docA = new Doc();
 const docB = new Doc();
-const pA = new WebsocketProvider(SERVER, ROOM, docA, { disableBc: true });
-const pB = new WebsocketProvider(SERVER, ROOM, docB, { disableBc: true });
+const pA = new WebsocketProvider(SERVER, ROOM, docA, { disableBc: true, params: authParams });
+const pB = new WebsocketProvider(SERVER, ROOM, docB, { disableBc: true, params: authParams });
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const fail = (msg) => {

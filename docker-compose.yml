@@ -13,9 +13,13 @@ services:
       - "9091:9091"
     volumes:
       - polyphony-uploads:/app/server/uploads
+      - polyphony-data:/app/server/data
     mem_limit: 512m
 
 volumes:
   polyphony-uploads:
     # 固定卷名:不带 compose 项目前缀(CI 每次在 /tmp/polyphony-src 下 up,目录名不稳定)
     name: polyphony-uploads
+  polyphony-data:
+    # 账号数据(accounts.json):token 哈希 + 房间簿
+    name: polyphony-data

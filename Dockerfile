@@ -41,14 +41,13 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 COPY --from=serverdeps /build/server/node_modules ./server/node_modules
-COPY server/index.js ./server/index.js
-COPY server/convergence-smoke.mjs ./server/convergence-smoke.mjs
+COPY server/index.js server/auth.js server/convergence-smoke.mjs ./server/
 COPY --from=webbuild /build/dist ./public
 
-# 上传目录（运行时挂载卷持久化）；非 root 运行
-RUN mkdir -p /app/server/uploads && chown -R node:node /app
+# 上传目录与账号数据（运行时挂卷持久化；accounts.json 原子写）；非 root 运行
+RUN mkdir -p /app/server/uploads /app/server/data && chown -R node:node /app
 USER node
-VOLUME ["/app/server/uploads"]
+VOLUME ["/app/server/uploads", "/app/server/data"]
 
 EXPOSE 9091
 

@@ -7,6 +7,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { createAccount, verifyToken, enterRoom, leaveRooms, getRooms } from './auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +25,81 @@ if (!fs.existsSync(uploadsDir)) {
 
 // 静态文件服务
 app.use('/uploads', express.static(uploadsDir));
+
+// ---------- 账号鉴权(token 全端通用;创建仅 Web/同源) ----------
+
+/** 从 Authorization: Bearer xxx 取 token。 */
+function bearerToken(req) {
+  const h = req.headers.authorization || '';
+  return h.startsWith('Bearer ') ? h.slice(7).trim() : '';
+}
+
+/** 同源或非浏览器(无 Origin)放行;App(Tauri 自有 Origin)拒绝 = 服务端也拦 App 创建。 */
+function sameOriginOrTool(req) {
+  const origin = req.headers.origin;
+  if (!origin) return true; // curl/node 等非浏览器客户端(冒烟/CLI)
+  try {
+    const o = new URL(origin);
+    return o.host === req.headers.host;
+  } catch {
+    return false;
+  }
+}
+
+function requireAuth(req, res, next) {
+  const account = verifyToken(bearerToken(req));
+  if (!account) {
+    return res.status(401).json({ error: '未登录或 token 无效', code: 'ERR_UNAUTHORIZED' });
+  }
+  req.account = account;
+  next();
+}
+
+// 创建账号(Web 独占:同源校验)。token 明文仅在本次响应出现,服务端只存哈希。
+app.post('/auth/create', (req, res) => {
+  if (!sameOriginOrTool(req)) {
+    return res.status(403).json({ error: '账号仅支持在 Web 端创建', code: 'ERR_WEB_ONLY' });
+  }
+  try {
+    const { token, name } = createAccount(req.body?.name);
+    res.status(201).json({ token, name });
+  } catch (err) {
+    res.status(422).json({ error: err.message, code: err.code || 'ERR_NAME_INVALID' });
+  }
+});
+
+// 校验 token 并返回账号信息(登录/展示用)
+app.get('/auth/me', requireAuth, (req, res) => {
+  res.json({ id: req.account.id, name: req.account.name });
+});
+
+// 我的房间(服务端房间簿;合并 /health 的在线人数)
+app.get('/rooms', requireAuth, (req, res) => {
+  const rooms = getRooms(req.account.id).map((r) => {
+    const live = roomStats.get(r.code);
+    return { ...r, userCount: live ? live.clients.size : 0 };
+  });
+  res.json({ rooms });
+});
+
+// 进入/改名登记(upsert)
+app.post('/rooms/enter', requireAuth, (req, res) => {
+  const rooms = enterRoom(req.account.id, req.body?.code, req.body?.name).map((r) => {
+    const live = roomStats.get(r.code);
+    return { ...r, userCount: live ? live.clients.size : 0 };
+  });
+  res.json({ rooms });
+});
+
+// 批量退出(解除关联;房间内容不受影响)
+app.post('/rooms/leave', requireAuth, (req, res) => {
+  const rooms = leaveRooms(req.account.id, req.body?.codes).map((r) => {
+    const live = roomStats.get(r.code);
+    return { ...r, userCount: live ? live.clients.size : 0 };
+  });
+  res.json({ rooms });
+});
+
 
 // 配置 multer 存储
 const storage = multer.diskStorage({
@@ -57,8 +133,8 @@ const upload = multer({
   fileFilter: fileFilter,
 });
 
-// 图片上传端点
-app.post('/upload', upload.single('image'), (req, res) => {
+// 图片上传端点(需登录)
+app.post('/upload', requireAuth, upload.single('image'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: '没有上传文件', code: 'E_NO_FILE' });
@@ -137,6 +213,13 @@ wss.on('connection', (ws, req) => {
     url ?? '/',
     `http://${req.headers.host ?? 'localhost'}`
   );
+
+  // 强制鉴权:所有端用账号 token 登录(无 token/无效 → 拒绝)
+  const account = verifyToken(roomUrl.searchParams.get('token') || '');
+  if (!account) {
+    ws.close(4001, 'unauthorized: token required');
+    return;
+  }
 
   const roomCode = decodeURIComponent(roomUrl.pathname.slice(1) || 'default');
 

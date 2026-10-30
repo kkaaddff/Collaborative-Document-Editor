@@ -31,6 +31,9 @@
 .DS_Store
 *.pem
 
+# 服务端运行数据(账号/房间簿;容器内挂 polyphony-data 卷)
+/server/data
+
 # logs
 *.log
 
