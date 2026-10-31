@@ -152,6 +152,19 @@ test.describe("编辑器(移动)", () => {
     const toolbar = page.locator(".mdxeditor-toolbar").first();
     await expect(toolbar).toBeVisible();
 
+    // 工具栏图标按钮触达:第三方原生 28px,移动端应抬到 ≥38px(真机 audit 发现)
+    const tapSides = await page
+      .locator(".mdxeditor-toolbar button")
+      .evaluateAll((els) =>
+        els.map((e) => {
+          const r = e.getBoundingClientRect();
+          return Math.min(r.width, r.height);
+        })
+      );
+    const visible = tapSides.filter((s) => s > 0);
+    expect(visible.length).toBeGreaterThan(0);
+    expect(Math.min(...visible), "工具栏按钮触达过小").toBeGreaterThanOrEqual(38);
+
     // 交互级回归:「退出房间」曾被子元素遮挡点不动,必须真实可点
     await page.getByRole("button", { name: "退出房间" }).click();
     await expect(page).toHaveURL("/");

@@ -14,3 +14,14 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   color-scheme: light;
 }
+
+/*
+ * MDX 工具栏按钮触达：第三方原生 28px，抬到 38px（移动触屏标准下限）。
+ * 放 index.css 而非 Tailwind 任意变体：`[&_.._button]:min-w-[38px]` 这类
+ * 元素后代任意变体在 v4 dev/prod 均生成规则却不参与级联（已实测），勿回迁。
+ * 特异性 (0,1,1) 高于 MDXEditor CSS 模块单类 (0,1,0)，稳赢。
+ */
+.mdxeditor-toolbar button {
+  min-width: 38px;
+  min-height: 38px;
+}

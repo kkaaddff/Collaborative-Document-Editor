@@ -208,7 +208,9 @@ export default function Editor() {
                 onChange={handleContentChange}
                 plugins={plugins}
                 contentEditableClassName="focus:outline-none min-h-[400px] p-4 text-gray-900 dark:text-gray-100"
-                // 工具栏内部横向滚动:窄屏不再裁切按钮、不撑破页面
+                // 工具栏内部横向滚动:窄屏不再裁切按钮、不撑破页面。
+                // 注意:必须是单行字符串——MDXEditor 按空格拆分后逐个 classList.add,内嵌换行会抛 InvalidCharacterError 炸整棵树;
+                // 工具栏按钮 38px 触达在 index.css 全局覆盖(元素后代任意变体在 Tailwind v4 下生成却不生效,勿再尝试)
                 className="h-full dark:[&_.mdxeditor-toolbar]:bg-gray-800 [&_.mdxeditor-toolbar]:bg-white [&_.mdxeditor-toolbar]:overflow-x-auto [&_.mdxeditor-toolbar]:max-w-full"
                 spellCheck={true}
               />
