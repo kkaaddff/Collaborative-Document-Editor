@@ -168,7 +168,7 @@ export default function Editor() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+    <div className="h-screen flex flex-col bg-gray-50 dark:bg-gray-900 pt-[env(safe-area-inset-top)] box-border">
       <RoomHeader
         roomCode={roomCode}
         roomName={roomName}
@@ -231,7 +231,7 @@ export default function Editor() {
           onClick={() => setUsersDrawer(false)}
         >
           <div
-            className="absolute right-0 top-0 h-full w-72 bg-white dark:bg-gray-800 shadow-2xl"
+            className="absolute right-0 top-0 h-full w-72 bg-white dark:bg-gray-800 shadow-2xl pt-[env(safe-area-inset-top)] box-border"
             onClick={(e) => e.stopPropagation()}
           >
             <UsersPanel users={users} />

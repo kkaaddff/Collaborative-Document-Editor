@@ -3,6 +3,22 @@
 本文件记录面向用户的显著变更。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),
 版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
 
+## [3.4.1] - 2026-10-31
+
+全面屏与触控细节修复。
+
+### 新增
+
+- **顶部安全区**：Android 15+ edge-to-edge 下 WebView 延伸进状态栏、顶栏被压住——`viewport-fit=cover` + 全部页面根 `env(safe-area-inset-top)` 内边距（桌面/浏览器 env()=0，零影响）。
+
+### 修复
+
+- MDX 工具栏按钮触达 28px → 38px（真机审计发现；第三方原生样式，`index.css` 全局覆盖 + e2e 回归断言）。
+
+### 变更
+
+- **Android APK 固定 debug 签名**（keystore 存 CI secret）：跨次构建签名一致，此后 APK 支持原地覆盖安装——不再每次卸载重装。v3.4.0 及更早为一次性签名，升级到本版需**最后一次**卸载重装。
+
 ## [3.4.0] - 2026-10-31
 
 移动端响应式重构 + 全页面 UI 测试体系。

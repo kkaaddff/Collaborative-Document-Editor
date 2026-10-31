@@ -46,7 +46,7 @@ export default function Join() {
   }, [searchParams, navigate, t]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center pt-[env(safe-area-inset-top)] box-border">
       <p className="text-gray-500 text-sm">{message}</p>
     </div>
   );

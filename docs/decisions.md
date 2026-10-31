@@ -31,6 +31,8 @@
 | 25 | 房间簿放服务端（账号→rooms），非本地「最近房间」 | 换设备/换端登录列表一致；退出（单个/批量）服务端生效；容量 50/号淘汰最旧。本地 recentRooms 仅作托盘与 IndexedDB 兼容保留 |
 | 27 | 移动优先响应式 + 程序化布局断言(v3.4.0) | 真机审计驱动:vw=369 时双栏/固定宽侧栏/24px 图标全崩,「退出房间」被遮挡属交互级损坏。断言用程序化指标(溢出/裁切/触达)而非像素比对——免维护、防抖动;UI 测试双 project(desktop+Pixel 7),桌面用例零改动 |
 | 26 | 房间名登记不加防抖 | 实踩：改名后 <500ms 退出编辑器，防抖定时器被卸载取消，服务端房间名丢失；改名本身离散触发，两次 POST 成本可忽略 |
+| 28 | Android 固定 debug 签名（v3.4.1）：keystore 存 GitHub secret，CI 构建前恢复到 `~/.android/debug.keystore` | 实踩：GitHub runner 每次现生成一次性 debug keystore，APK 签名互不匹配，每次发版只能卸载重装。PKCS12 用 openssl 本地生成（alias `androiddebugkey`/口令 `android`，JDK9+ 的 JKS 加载器自动识别），base64 进 secret `ANDROID_DEBUG_KEYSTORE_BASE64`；本地备份 `secrets/android-debug.keystore`（gitignored）。放弃提交进仓库：GitHub 仓公开，签名材料不可入库 |
+| 29 | 顶部安全区：`viewport-fit=cover` + 页面根 `pt-[env(safe-area-inset-top)] box-border`（v3.4.1） | targetSdk≥35 强制 edge-to-edge，WebView 延伸进状态栏压住顶栏。按页根加而非 `#root` 统一加：`box-border` 让 padding 计入 `h-screen`/`min-h-screen`，不产生整页滚动；桌面/测试浏览器 env()=0 零影响，e2e 断言不变 |
 
 ## 坑清单（按"再遇到怎么识别"组织）
 

@@ -210,7 +210,7 @@ export default function Home() {
   const allSelected = myRooms.length > 0 && selected.size === myRooms.length;
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden pt-[env(safe-area-inset-top)] box-border">
       {/* 顶栏:品牌居左;右上角固定「用户名 · 服务器地址」+ 设置/退出登录 */}
       <header className="flex items-center justify-between px-6 py-3 shrink-0">
         <div className="flex items-baseline gap-3 min-w-0">
